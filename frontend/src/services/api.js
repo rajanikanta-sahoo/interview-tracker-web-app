@@ -1,0 +1,84 @@
+const API_BASE_URL = 'http://localhost:5001/api';
+
+export const api = {
+  fetchJobs: async (role = '', location = '', remote = false) => {
+    const query = new URLSearchParams({ role, location, remote: remote ? 'true' : 'false' });
+    const res = await fetch(`${API_BASE_URL}/jobs?${query}`);
+    return res.json();
+  },
+
+  addCustomJob: async (jobData) => {
+    const res = await fetch(`${API_BASE_URL}/jobs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(jobData)
+    });
+    return res.json();
+  },
+
+  fetchQuestions: async (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.keyword) query.append('keyword', params.keyword);
+    if (params.group) query.append('group', params.group);
+    if (params.difficulty) query.append('difficulty', params.difficulty);
+    
+    const res = await fetch(`${API_BASE_URL}/questions?${query}`);
+    return res.json();
+  },
+
+  addQuestionText: async (questionData) => {
+    const res = await fetch(`${API_BASE_URL}/questions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(questionData)
+    });
+    return res.json();
+  },
+
+  uploadQuestionFile: async (questionData, file) => {
+    const formData = new FormData();
+    Object.keys(questionData).forEach(key => formData.append(key, questionData[key]));
+    formData.append('file', file);
+    
+    const res = await fetch(`${API_BASE_URL}/questions/upload`, {
+      method: 'POST',
+      body: formData
+    });
+    return res.json();
+  },
+
+  deleteQuestion: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/questions/${id}`, { method: 'DELETE' });
+    return res.json();
+  },
+
+  deleteAllQuestions: async () => {
+    const res = await fetch(`${API_BASE_URL}/questions/all`, { method: 'DELETE' });
+    return res.json();
+  },
+
+  fetchProfile: async () => {
+    const res = await fetch(`${API_BASE_URL}/profile`);
+    return res.json();
+  },
+
+  updateProfile: async (data) => {
+    const res = await fetch(`${API_BASE_URL}/profile/update`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+
+  uploadResume: async (file) => {
+    const formData = new FormData();
+    formData.append('resume', file);
+    
+    const res = await fetch(`${API_BASE_URL}/profile/upload-resume`, {
+      method: 'POST',
+      body: formData
+    });
+    return res.json();
+  }
+};
