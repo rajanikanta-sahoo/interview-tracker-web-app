@@ -1,17 +1,10 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
+import { readDb, writeDb } from '../db.js';
 
 const router = express.Router();
 
-let userProfile = {
-  name: '',
-  role: '',
-  experience: '',
-  skills: [],
-  preferences: { location: '', salary: '', type: '' },
-  resumePath: null
-};
 
 // Configure Multer for Resume upload
 const storage = multer.diskStorage({
@@ -27,14 +20,17 @@ const upload = multer({ storage: storage });
 
 // GET /api/profile
 router.get('/', (req, res) => {
-  res.json(userProfile);
+  const db = readDb();
+  res.json(db.profile);
 });
 
 // POST /api/profile/update
 router.post('/update', (req, res) => {
   const data = req.body;
-  userProfile = { ...userProfile, ...data };
-  res.json({ message: 'Profile updated', profile: userProfile });
+  const db = readDb();
+  db.profile = { ...db.profile, ...data };
+  writeDb(db);
+  res.json({ message: 'Profile updated', profile: db.profile });
 });
 
 // POST /api/profile/upload-resume
@@ -43,8 +39,10 @@ router.post('/upload-resume', upload.single('resume'), (req, res) => {
     return res.status(400).json({ error: 'No file uploaded' });
   }
   
-  userProfile.resumePath = `/uploads/${req.file.filename}`;
-  res.json({ message: 'Resume uploaded successfully', resumePath: userProfile.resumePath });
+  const db = readDb();
+  db.profile.resumePath = `/uploads/${req.file.filename}`;
+  writeDb(db);
+  res.json({ message: 'Resume uploaded successfully', resumePath: db.profile.resumePath });
 });
 
 export default router;

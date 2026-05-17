@@ -1,0 +1,40 @@
+{
+  "profile": {
+    "name": "",
+    "role": "",
+    "experience": "",
+    "skills": [],
+    "preferences": {
+      "location": "",
+      "salary": "",
+      "type": ""
+    },
+    "resumePath": null
+  },
+  "questionsBank": [
+    {
+      "id": "q1",
+      "role": "Software Engineer",
+      "text": "Can you explain the difference between REST and GraphQL?",
+      "type": "text"
+    },
+    {
+      "id": "q2",
+      "role": "Software Engineer",
+      "text": "How do you handle state management in React?",
+      "type": "text"
+    },
+    {
+      "id": "qf1779028633711",
+      "role": "General",
+      "group": "java",
+      "keyAreas": "",
+      "difficulty": "",
+      "filename": "question-1779028633703-382352337.pdf",
+      "originalName": "Java_Senior_Interview_Questions.pdf",
+      "path": "/uploads/question-1779028633703-382352337.pdf",
+      "type": "file"
+    }
+  ],
+  "customJobs": []
+}

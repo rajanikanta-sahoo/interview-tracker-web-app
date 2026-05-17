@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import jobRoutes from './routes/jobs.js';
 import questionRoutes from './routes/questions.js';
 import profileRoutes from './routes/profile.js';
+import resumeRoutes from './routes/resume.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,6 +31,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/api/jobs', jobRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/resume', resumeRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Interview Tracker API is running' });

@@ -1,10 +1,8 @@
 import express from 'express';
 import { scrapeJobs } from '../scraper/index.js';
+import { readDb, writeDb } from '../db.js';
 
 const router = express.Router();
-
-// Mock store for user-contributed jobs
-let customJobs = [];
 
 // GET /api/jobs - Search jobs
 router.get('/', async (req, res) => {
@@ -15,7 +13,8 @@ router.get('/', async (req, res) => {
     const scrapedJobs = await scrapeJobs(role, location, remote === 'true', skills, experience);
     
     // Combine with custom jobs
-    const allJobs = [...customJobs, ...scrapedJobs];
+    const db = readDb();
+    const allJobs = [...db.customJobs, ...scrapedJobs];
     
     res.json(allJobs);
   } catch (error) {
@@ -43,7 +42,9 @@ router.post('/', (req, res) => {
     source: 'User Contributed'
   };
 
-  customJobs.push(newJob);
+  const db = readDb();
+  db.customJobs.push(newJob);
+  writeDb(db);
   res.status(201).json(newJob);
 });
 

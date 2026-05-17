@@ -38,7 +38,8 @@ function Profile() {
   const handleSave = async () => {
     await api.updateProfile(profile);
     if (resumeFile) {
-      await api.uploadResume(resumeFile);
+      const res = await api.uploadResume(resumeFile);
+      setProfile(prev => ({ ...prev, resumePath: res.resumePath }));
     }
     alert('Profile saved successfully!');
   };
@@ -103,6 +104,19 @@ function Profile() {
         <input type="file" onChange={(e) => setResumeFile(e.target.files[0])} accept=".pdf,.doc,.docx" />
         <p className="text-muted text-sm" style={{ marginTop: '0.5rem' }}>Upload Resume (PDF/DOC)</p>
       </div>
+
+      {profile.resumePath && (
+        <div style={{ marginBottom: '2rem' }}>
+          <h3 style={{ marginBottom: '1rem' }}>Document Review</h3>
+          {profile.resumePath.toLowerCase().endsWith('.pdf') ? (
+            <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+              <iframe src={`http://localhost:5001${profile.resumePath}`} width="100%" height="400px" style={{ border: 'none' }} title="Resume Preview"></iframe>
+            </div>
+          ) : (
+            <p className="text-muted">Preview not available for this file type. <a href={`http://localhost:5001${profile.resumePath}`} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)' }}>Download to view</a>.</p>
+          )}
+        </div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
         <button className="btn btn-primary" onClick={handleSave}>Save Changes</button>

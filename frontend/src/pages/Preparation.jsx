@@ -110,7 +110,16 @@ function Preparation() {
                           </div>
                           {q.keyAreas && <p className="text-sm text-muted" style={{ marginBottom: '0.5rem' }}>Key Areas: {q.keyAreas}</p>}
                           {q.type === 'file' ? (
-                            <a href={`http://localhost:5001${q.path}`} target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', marginTop: '0.5rem', display: 'inline-block' }}>Download Document</a>
+                            <div style={{ marginTop: '1rem' }}>
+                              <a href={`http://localhost:5001${q.path}`} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ display: 'inline-block', marginBottom: '1rem' }}>Download Document</a>
+                              {q.path.toLowerCase().endsWith('.pdf') ? (
+                                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                                  <iframe src={`http://localhost:5001${q.path}`} width="100%" height="400px" style={{ border: 'none' }} title="Document Preview"></iframe>
+                                </div>
+                              ) : (
+                                <p className="text-muted text-sm">Preview not available for this file type. Please download to view.</p>
+                              )}
+                            </div>
                           ) : (
                             <p style={{ marginTop: '0.5rem' }}>Practice answering this question using the STAR method (Situation, Task, Action, Result).</p>
                           )}

@@ -1,14 +1,9 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
+import { readDb, writeDb } from '../db.js';
 
 const router = express.Router();
-
-// Mock initial questions
-let questionsBank = [
-  { id: 'q1', role: 'Software Engineer', text: 'Can you explain the difference between REST and GraphQL?', type: 'text' },
-  { id: 'q2', role: 'Software Engineer', text: 'How do you handle state management in React?', type: 'text' }
-];
 
 // Configure Multer for PDF/DOC uploads
 const storage = multer.diskStorage({
@@ -36,7 +31,8 @@ const upload = multer({
 // GET /api/questions - Get questions
 router.get('/', (req, res) => {
   const { keyword, group, difficulty } = req.query;
-  let filtered = questionsBank;
+  const db = readDb();
+  let filtered = db.questionsBank;
 
   if (keyword) {
     const lowerKeyword = keyword.toLowerCase();
@@ -72,7 +68,9 @@ router.post('/', (req, res) => {
     difficulty: difficulty || '',
     type: 'text' 
   };
-  questionsBank.push(newQuestion);
+  const db = readDb();
+  db.questionsBank.push(newQuestion);
+  writeDb(db);
   res.status(201).json(newQuestion);
 });
 
@@ -95,26 +93,32 @@ router.post('/upload', upload.single('file'), (req, res) => {
     type: 'file'
   };
 
-  questionsBank.push(newFileQuestion);
+  const db = readDb();
+  db.questionsBank.push(newFileQuestion);
+  writeDb(db);
   res.status(201).json(newFileQuestion);
 });
 
 // DELETE /api/questions/all - Clear all questions
 router.delete('/all', (req, res) => {
-  questionsBank = [];
+  const db = readDb();
+  db.questionsBank = [];
+  writeDb(db);
   res.json({ message: 'All questions deleted' });
 });
 
 // DELETE /api/questions/:id - Delete a specific question
 router.delete('/:id', (req, res) => {
   const { id } = req.params;
-  const initialLength = questionsBank.length;
-  questionsBank = questionsBank.filter(q => q.id !== id);
+  const db = readDb();
+  const initialLength = db.questionsBank.length;
+  db.questionsBank = db.questionsBank.filter(q => q.id !== id);
   
-  if (questionsBank.length === initialLength) {
+  if (db.questionsBank.length === initialLength) {
     return res.status(404).json({ error: 'Question not found' });
   }
   
+  writeDb(db);
   res.json({ message: 'Question deleted' });
 });
 

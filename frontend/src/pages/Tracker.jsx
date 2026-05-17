@@ -30,6 +30,16 @@ function Tracker() {
     }
   };
 
+  const updateJobRound = (jobId, statusKey, newRound) => {
+    const data = { ...trackerData };
+    const jobIndex = data[statusKey].findIndex(j => j.id === jobId);
+    if (jobIndex > -1) {
+      data[statusKey][jobIndex].round = newRound;
+      setTrackerData(data);
+      storage.saveTrackerJobs(data);
+    }
+  };
+
   const renderColumn = (title, statusKey, jobs) => (
     <div style={{ flex: 1, backgroundColor: 'var(--bg-color)', borderRadius: '8px', padding: '1rem', minHeight: '400px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
@@ -41,6 +51,18 @@ function Tracker() {
           <div key={job.id} className="card" style={{ padding: '1rem', cursor: 'pointer' }}>
             <h4 style={{ margin: 0, fontSize: '0.9rem' }}>{job.title}</h4>
             <p className="text-muted text-sm" style={{ marginBottom: '0.5rem' }}>{job.company}</p>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <label className="text-sm">Round:</label>
+              <input 
+                  type="number" 
+                  className="input" 
+                  style={{ width: '60px', padding: '0.25rem', fontSize: '0.75rem' }} 
+                  value={job.round || ''} 
+                  onChange={(e) => updateJobRound(job.id, statusKey, e.target.value)} 
+                  min="1"
+              />
+            </div>
             
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <select className="input" style={{ flex: 1, fontSize: '0.75rem', padding: '0.25rem' }} value={statusKey} onChange={(e) => moveJob(job, statusKey, e.target.value)}>

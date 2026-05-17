@@ -80,5 +80,62 @@ export const api = {
       body: formData
     });
     return res.json();
+  },
+
+  // --- Resumes & Cover Letters ---
+  getResumes: async () => {
+    const res = await fetch(`${API_BASE_URL}/resume`);
+    return res.json();
+  },
+  
+  saveResume: async (data) => {
+    const res = await fetch(`${API_BASE_URL}/resume`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+
+  deleteResume: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/resume/${id}`, { method: 'DELETE' });
+    return res.json();
+  },
+
+  getCoverLetters: async () => {
+    const res = await fetch(`${API_BASE_URL}/resume/cover-letters`);
+    return res.json();
+  },
+  
+  saveCoverLetter: async (data) => {
+    const res = await fetch(`${API_BASE_URL}/resume/cover-letters`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+
+  deleteCoverLetter: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/resume/cover-letters/${id}`, { method: 'DELETE' });
+    return res.json();
+  },
+
+  generateSuggestions: async (role, profileSkills) => {
+    const res = await fetch(`${API_BASE_URL}/resume/generate-suggestions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role, profileSkills })
+    });
+    return res.json();
+  },
+
+  generateCoverLetter: async (role, profileName, companyName) => {
+    const res = await fetch(`${API_BASE_URL}/resume/generate-cover-letter`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role, profileName, companyName })
+    });
+    return res.json();
   }
 };
