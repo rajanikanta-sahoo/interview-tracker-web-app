@@ -1,4 +1,4 @@
- Interview Tracker Web App
+# Interview Tracker Web App
 
 A full-stack, minimalist web application to help you prepare for interviews, track job applications, and evaluate your progress.
 
