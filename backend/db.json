@@ -1,15 +1,40 @@
 {
   "profile": {
-    "name": "",
-    "role": "",
-    "experience": "",
-    "skills": [],
+    "name": "Rajanikanta Sahoo",
+    "role": "Java Developer",
+    "experience": "9",
+    "skills": [
+      {
+        "name": "java",
+        "level": "Intermediate"
+      },
+      {
+        "name": "spring boot",
+        "level": "Intermediate"
+      },
+      {
+        "name": "spring mvc",
+        "level": "Intermediate"
+      },
+      {
+        "name": "React",
+        "level": "Expert"
+      },
+      {
+        "name": "Docker",
+        "level": "Expert"
+      }
+    ],
     "preferences": {
-      "location": "",
-      "salary": "",
-      "type": ""
+      "location": "bhubanewar",
+      "salary": "1500000",
+      "type": "Full-Time"
     },
-    "resumePath": null
+    "resumePath": null,
+    "bio": "",
+    "linkedin": "",
+    "github": "",
+    "portfolio": ""
   },
   "questionsBank": [
     {
@@ -34,7 +59,73 @@
       "originalName": "Java_Senior_Interview_Questions.pdf",
       "path": "/uploads/question-1779028633703-382352337.pdf",
       "type": "file"
+    },
+    {
+      "id": "q1779125913912",
+      "role": "SDE-2",
+      "text": "What is CAP theorem?",
+      "group": "System Design",
+      "keyAreas": "",
+      "difficulty": "Hard",
+      "type": "text"
+    },
+    {
+      "id": "q1779125913918",
+      "role": "SDE-2",
+      "text": "Explain consistent hashing.",
+      "group": "System Design",
+      "keyAreas": "",
+      "difficulty": "Hard",
+      "type": "text"
+    },
+    {
+      "id": "q1779125913922",
+      "role": "SDE-2",
+      "text": "How does Kafka ensure message ordering?",
+      "group": "System Design",
+      "keyAreas": "",
+      "difficulty": "Hard",
+      "type": "text"
     }
   ],
-  "customJobs": []
+  "customJobs": [
+    {
+      "id": "custom-1779125844624",
+      "title": "Backend Engineer",
+      "company": "Amazon",
+      "location": "Hyderabad",
+      "type": "Full-Time",
+      "description": "",
+      "postedAt": "2026-05-18T17:37:24.624Z",
+      "source": "User Contributed"
+    }
+  ],
+  "resumes": [
+    {
+      "title": "New Resume",
+      "role": "",
+      "name": "Alex Mercer",
+      "email": "alex@mercer.dev",
+      "phone": "",
+      "summary": "",
+      "experience": [],
+      "education": [],
+      "skills": [],
+      "selectedPoints": [],
+      "id": "res-1779117970089",
+      "createdAt": "2026-05-18T15:26:10.089Z",
+      "updatedAt": "2026-05-18T15:26:10.089Z"
+    }
+  ],
+  "coverLetters": [
+    {
+      "title": "New Cover Letter",
+      "role": "Senior Frontend Engineer",
+      "company": "Google",
+      "content": "Dear Hiring Manager,\n\nI am writing to express my strong interest in the Senior Frontend Engineer position at Google. With my solid background in this field and my passion for delivering high-quality results, I am confident in my ability to make an immediate impact on your team.\n\nThroughout my career, I have consistently demonstrated a strong ability to solve complex problems and collaborate effectively with cross-functional teams. I am particularly drawn to Google's innovative approach and industry reputation.\n\nI would welcome the opportunity to discuss how my skills and experiences align with your needs. Thank you for considering my application.\n\nSincerely,\n\n[Your Name]\n",
+      "id": "cl-1779118134747",
+      "createdAt": "2026-05-18T15:28:54.747Z",
+      "updatedAt": "2026-05-18T15:28:54.747Z"
+    }
+  ]
 }

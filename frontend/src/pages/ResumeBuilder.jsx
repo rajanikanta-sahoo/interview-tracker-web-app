@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { UploadCloud } from 'lucide-react';
 import { api } from '../services/api';
 
 function ResumeBuilder() {
@@ -10,7 +11,65 @@ function ResumeBuilder() {
   const [currentResume, setCurrentResume] = useState(null);
   const [suggestions, setSuggestions] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
   const previewRef = useRef();
+
+  const handleResumeUpload = async (file) => {
+    if (!file) return;
+    
+    // Check file type
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['pdf', 'txt', 'docx'].includes(ext)) {
+      alert("Only PDF, TXT and DOCX files are allowed!");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const parsedResume = await api.uploadResumeAndParse(file);
+      if (parsedResume && parsedResume.id) {
+        // Refresh the resumes list
+        const updatedResumes = await api.getResumes();
+        setResumes(updatedResumes);
+        // Select the newly uploaded and parsed resume
+        setCurrentResume(parsedResume);
+        setSuggestions(null);
+      } else {
+        alert("Upload completed, but failed to parse resume details.");
+      }
+    } catch (err) {
+      console.error("Resume upload error:", err);
+      alert("An error occurred while uploading and parsing your resume.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleResumeUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      handleResumeUpload(e.target.files[0]);
+    }
+  };
 
   // Cover Letters State
   const [coverLetters, setCoverLetters] = useState([]);
@@ -54,6 +113,23 @@ function ResumeBuilder() {
     const updated = await api.getResumes();
     setResumes(updated);
     alert("Resume saved!");
+  };
+
+  const clearResumeFields = () => {
+    if (!currentResume) return;
+    if (window.confirm("Are you sure you want to clear all fields in this resume?")) {
+      setCurrentResume({
+        ...currentResume,
+        role: '',
+        name: '',
+        email: '',
+        phone: '',
+        summary: '',
+        skills: [],
+        selectedPoints: []
+      });
+      setSuggestions(null);
+    }
   };
 
   const deleteResume = async (id, e) => {
@@ -160,12 +236,80 @@ function ResumeBuilder() {
         <div style={{ display: 'flex', gap: '1rem', flex: 1 }}>
           {/* Sidebar */}
           <div className="card" style={{ width: '250px', display: 'flex', flexDirection: 'column', padding: '1rem' }}>
-            <button className="btn btn-primary" style={{ marginBottom: '1rem' }} onClick={createNewResume}>+ New Resume</button>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto' }}>
+            <style>{`
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+              .resume-upload-spinner {
+                animation: spin 1s linear infinite;
+              }
+            `}</style>
+            
+            <button className="btn btn-primary" style={{ marginBottom: '0.75rem' }} onClick={createNewResume}>+ New Resume</button>
+            
+            {/* Visual Drag and Drop Resume Uploader */}
+            <div 
+              style={{ 
+                border: isDragging ? '2px dashed var(--primary-color, #3b82f6)' : '2px dashed var(--border-color, #cbd5e1)',
+                borderRadius: '8px',
+                padding: '1.25rem 1rem',
+                textAlign: 'center',
+                backgroundColor: isDragging ? 'rgba(59, 130, 246, 0.05)' : 'var(--bg-color, #ffffff)',
+                cursor: isUploading ? 'not-allowed' : 'pointer',
+                marginBottom: '1rem',
+                transition: 'all 0.2s ease',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                position: 'relative',
+                boxShadow: isDragging ? '0 4px 12px rgba(59, 130, 246, 0.1)' : 'none',
+                minHeight: '120px'
+              }}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => !isUploading && fileInputRef.current?.click()}
+            >
+              {isUploading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                  <div className="resume-upload-spinner" style={{
+                    width: '24px',
+                    height: '24px',
+                    border: '3px solid rgba(59, 130, 246, 0.2)',
+                    borderTop: '3px solid var(--primary-color, #3b82f6)',
+                    borderRadius: '50%'
+                  }}></div>
+                  <span style={{ fontSize: '11px', fontWeight: '500', color: 'var(--text-color, #1e293b)' }}>Parsing Resume...</span>
+                </div>
+              ) : (
+                <>
+                  <UploadCloud size={28} style={{ color: isDragging ? 'var(--primary-color, #3b82f6)' : '#64748b', transition: 'color 0.2s' }} />
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-color, #1e293b)' }}>
+                    Upload Resume
+                  </span>
+                  <span style={{ fontSize: '10px', color: '#64748b', lineHeight: '1.4' }}>
+                    Drag & drop PDF, TXT or click to browse
+                  </span>
+                </>
+              )}
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                accept=".pdf,.txt,.docx" 
+                style={{ display: 'none' }} 
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', overflowY: 'auto', flex: 1 }}>
+              <p style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: '#64748b', margin: '0.5rem 0 0.25rem 0' }}>Saved Resumes</p>
               {resumes.map(r => (
-                <div key={r.id} onClick={() => setCurrentResume(r)} style={{ padding: '0.75rem', borderRadius: '4px', cursor: 'pointer', backgroundColor: currentResume?.id === r.id ? 'var(--primary-light, #e0f2fe)' : 'var(--bg-color)', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontWeight: currentResume?.id === r.id ? 'bold' : 'normal' }}>{r.title}</span>
-                  <span onClick={(e) => deleteResume(r.id, e)} style={{ color: 'var(--danger)' }}>✕</span>
+                <div key={r.id} onClick={() => setCurrentResume(r)} style={{ padding: '0.75rem', borderRadius: '4px', cursor: 'pointer', backgroundColor: currentResume?.id === r.id ? 'var(--primary-light, #e0f2fe)' : 'var(--bg-color)', border: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: currentResume?.id === r.id ? 'bold' : 'normal', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '170px' }}>{r.title}</span>
+                  <span onClick={(e) => deleteResume(r.id, e)} style={{ color: 'var(--danger)', fontSize: '12px', padding: '0 4px', cursor: 'pointer' }}>✕</span>
                 </div>
               ))}
               {resumes.length === 0 && <p className="text-muted text-sm text-center">No resumes saved yet.</p>}
@@ -179,7 +323,10 @@ function ResumeBuilder() {
               <div className="card" style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', minWidth: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
                   <h3>Edit Resume</h3>
-                  <button className="btn btn-primary" onClick={saveCurrentResume}>Save</button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn btn-outline" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={clearResumeFields}>Clear Resume</button>
+                    <button className="btn btn-primary" onClick={saveCurrentResume}>Save</button>
+                  </div>
                 </div>
 
                 <div style={{ marginBottom: '1rem' }}>

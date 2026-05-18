@@ -4,17 +4,77 @@
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.sidebar.collapsed {
+  width: 70px;
 }
 
 .sidebar-brand {
   padding: 1.5rem;
   border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
 }
 
-.sidebar-brand h2 {
-  font-size: 1.25rem;
+.sidebar.collapsed .sidebar-brand {
+  justify-content: center;
+  padding: 1rem;
+}
+
+.sidebar-brand h2.brand-text {
+  font-size: 1.15rem;
   color: var(--primary);
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: opacity 0.2s ease;
+}
+
+.sidebar.collapsed .sidebar-brand h2.brand-text {
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.collapse-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.collapse-btn:hover {
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  border-color: var(--text-muted);
+}
+
+.sidebar.collapsed .collapse-btn {
+  position: absolute;
+  right: -14px;
+  top: 18px;
+  background-color: var(--surface);
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+  border-radius: 50%;
+  padding: 6px;
+}
+
+.sidebar.collapsed .collapse-btn:hover {
+  box-shadow: var(--shadow-md);
+  color: var(--primary);
+  border-color: var(--primary);
 }
 
 .sidebar-nav {
@@ -22,6 +82,9 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
 }
 
 .sidebar-link {
@@ -34,6 +97,37 @@
   font-weight: 500;
   transition: all 0.2s;
   border-left: 3px solid transparent;
+  white-space: nowrap;
+}
+
+.sidebar.collapsed .sidebar-link {
+  padding: 0.75rem 0;
+  justify-content: center;
+  gap: 0;
+  border-left-width: 4px;
+}
+
+.sidebar-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+}
+
+.sidebar-text {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  opacity: 1;
+  transform: translateX(0);
+  display: inline-block;
+}
+
+.sidebar.collapsed .sidebar-text {
+  opacity: 0;
+  transform: translateX(-10px);
+  width: 0;
+  overflow: hidden;
+  pointer-events: none;
+  display: none;
 }
 
 .sidebar-link:hover {
