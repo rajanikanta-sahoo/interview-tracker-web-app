@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import zlib from 'zlib';
 import { readDb, writeDb } from '../db.js';
 
 const router = express.Router();
@@ -29,6 +30,75 @@ const upload = multer({
   }
 });
 
+// --- Improved zero-dependency PDF text extractor ---
+
+// Check if extracted text looks like actual human-readable content vs PDF junk
+const isReadableText = (text) => {
+  if (!text || text.trim().length < 10) return false;
+  // Count alphanumeric vs non-printable/node junk ratio
+  const alphanumericChars = (text.match(/[a-zA-Z0-9]/g) || []).length;
+  const totalChars = text.length;
+  if (totalChars === 0) return false;
+  // If text contains node IDs or Adobe Identity metadata, it's junk
+  if (/node\d{5,}/i.test(text)) return false;
+  if (/Adobe\s*Identity/i.test(text)) return false;
+  // If ratio of real chars is too low, it's junk
+  return (alphanumericChars / totalChars) > 0.3;
+};
+
+// Extract text strings from a single PDF content stream (uncompressed)
+const extractTextFromStream = (streamContent) => {
+  const textParts = [];
+  
+  // Strategy 1: Extract text from BT...ET blocks with Tj/TJ operators
+  const btBlocks = streamContent.match(/BT[\s\S]*?ET/g) || [];
+  for (const block of btBlocks) {
+    // Match (text) Tj
+    const tjMatches = block.match(/\(([^)]*)\)\s*Tj/g) || [];
+    for (const m of tjMatches) {
+      const inner = m.match(/\(([^)]*)\)/);
+      if (inner && inner[1].trim()) {
+        textParts.push(inner[1]);
+      }
+    }
+    
+    // Match TJ arrays: [(text1) 123 (text2)] TJ
+    const tjArrayMatches = block.match(/\[([^\]]*)\]\s*TJ/gi) || [];
+    for (const arrMatch of tjArrayMatches) {
+      const inner = arrMatch.match(/\[([^\]]*)\]/);
+      if (inner) {
+        const stringParts = inner[1].match(/\(([^)]*)\)/g) || [];
+        const combined = stringParts.map(s => {
+          const m = s.match(/\(([^)]*)\)/);
+          return m ? m[1] : '';
+        }).join('');
+        if (combined.trim()) {
+          textParts.push(combined);
+        }
+      }
+    }
+  }
+  
+  // Strategy 2: If no BT/ET blocks found, try standalone Tj/TJ
+  if (textParts.length === 0) {
+    const standaloneTj = streamContent.match(/\(([^)]{2,})\)\s*Tj/g) || [];
+    for (const m of standaloneTj) {
+      const inner = m.match(/\(([^)]*)\)/);
+      if (inner && inner[1].trim()) {
+        textParts.push(inner[1]);
+      }
+    }
+  }
+
+  return textParts.join(' ')
+    .replace(/\\(\d{3})/g, (match, octal) => String.fromCharCode(parseInt(octal, 8)))
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '')
+    .replace(/\\\(/g, '(')
+    .replace(/\\\)/g, ')')
+    .replace(/\\\\/g, '\\');
+};
+
 // Helper to extract text from files (zero-dependency)
 const extractText = (filePath, originalName) => {
   const ext = path.extname(originalName).toLowerCase();
@@ -43,27 +113,55 @@ const extractText = (filePath, originalName) => {
   } else if (ext === '.pdf') {
     try {
       const buffer = fs.readFileSync(filePath);
-      const content = buffer.toString('binary');
+      const allTextParts = [];
+
+      // Step 1: Find and decompress FlateDecode streams
+      // PDF streams are between "stream\r\n" (or "stream\n") and "\r\nendstream" (or "\nendstream")
+      let pos = 0;
+      const bufStr = buffer.toString('binary');
       
-      // In PDF, text strings are represented as (Text String) Tj or TJ
-      // We search for text inside streams
-      const matches = content.match(/\(([^)]*)\)\s*(Tj|TJ)/g) || [];
-      if (matches.length > 0) {
-        return matches
-          .map(m => {
-            const inner = m.match(/\(([^)]*)\)/);
-            return inner ? inner[1] : '';
-          })
-          .join(' ')
-          .replace(/\\(\d{3})/g, (match, octal) => String.fromCharCode(parseInt(octal, 8)));
+      // Find all stream...endstream pairs
+      const streamRegex = /stream[\r\n]+/g;
+      let streamMatch;
+      while ((streamMatch = streamRegex.exec(bufStr)) !== null) {
+        const streamStart = streamMatch.index + streamMatch[0].length;
+        const endIdx = bufStr.indexOf('endstream', streamStart);
+        if (endIdx === -1) continue;
+        
+        const streamData = buffer.slice(streamStart, endIdx);
+        
+        // Try to inflate (FlateDecode) the stream
+        let decompressed = null;
+        try {
+          decompressed = zlib.inflateSync(streamData).toString('utf8');
+        } catch (e) {
+          // Not compressed or corrupt — try as raw text
+          decompressed = streamData.toString('binary');
+        }
+        
+        if (decompressed) {
+          const extracted = extractTextFromStream(decompressed);
+          if (extracted.trim() && isReadableText(extracted)) {
+            allTextParts.push(extracted);
+          }
+        }
       }
       
-      // Fallback: search for words in parentheses
-      const words = content.match(/\([a-zA-Z0-9\s.,@:+-]{3,}\)/g) || [];
-      if (words.length > 0) {
-        return words.map(w => w.slice(1, -1)).join(' ');
+      if (allTextParts.length > 0) {
+        const fullText = allTextParts.join('\n');
+        console.log('[PDF Parser] Extracted text length:', fullText.length, 'chars from', allTextParts.length, 'streams');
+        return fullText;
+      }
+
+      // Step 2: Fallback — try to extract text from uncompressed content directly
+      const rawText = bufStr;
+      const fallbackExtracted = extractTextFromStream(rawText);
+      if (fallbackExtracted.trim() && isReadableText(fallbackExtracted)) {
+        console.log('[PDF Parser] Fallback extraction got', fallbackExtracted.length, 'chars');
+        return fallbackExtracted;
       }
       
+      console.log('[PDF Parser] Could not extract readable text from PDF');
       return '';
     } catch (err) {
       console.error('Error extracting PDF text:', err);
@@ -97,8 +195,11 @@ const parseResumeText = (text, originalName) => {
     name: '',
     email: '',
     phone: '',
+    linkedin: '',
     summary: '',
     skills: [],
+    experience: [],
+    education: [],
     selectedPoints: []
   };
 
@@ -121,16 +222,45 @@ const parseResumeText = (text, originalName) => {
   // Split lines for parsing
   const lines = text.split(/[\r\n]+/).map(line => line.trim()).filter(line => line.length > 0);
 
-  // 1. Extract Name (Typically in the first 3 lines)
+  // Helper: detect if a string is junk/metadata
+  const isJunkString = (str) => {
+    if (!str) return true;
+    if (/node\d{5,}/i.test(str)) return true;
+    if (/Adobe\s*Identity/i.test(str)) return true;
+    if (/^D:\d{14}/.test(str)) return true; // PDF date metadata
+    if (/^[\d\s]+$/.test(str) && str.length > 20) return true; // only digits
+    return false;
+  };
+
+  // 1. Extract Name (Typically in the first 5 lines, look for proper name patterns)
   let detectedName = '';
-  for (let i = 0; i < Math.min(3, lines.length); i++) {
+  for (let i = 0; i < Math.min(5, lines.length); i++) {
     const line = lines[i];
-    if (/^[a-zA-Z]{2,}\s+[a-zA-Z]{2,}(\s+[a-zA-Z]{2,})?$/.test(line)) {
+    // Skip lines that look like metadata/junk
+    if (isJunkString(line)) continue;
+    // Skip lines that look like section headings
+    if (/^(summary|experience|education|skills|contact|profile|objective|about)/i.test(line)) continue;
+    // Match "FirstName LastName" or "FirstName MiddleName LastName" patterns
+    if (/^[A-Z][a-zA-Z'-]+\s+[A-Z][a-zA-Z'-]+(\s+[A-Z][a-zA-Z'-]+)?$/.test(line)) {
+      detectedName = line;
+      break;
+    }
+    // Relaxed match: at least two words with letters
+    if (/^[a-zA-Z]{2,}\s+[a-zA-Z]{2,}/.test(line) && line.length < 50 && !line.includes('@')) {
       detectedName = line;
       break;
     }
   }
-  parsed.name = detectedName || lines[0] || 'Applicant';
+  // Final fallback: use first non-junk line
+  if (!detectedName) {
+    for (let i = 0; i < Math.min(5, lines.length); i++) {
+      if (!isJunkString(lines[i]) && lines[i].length < 60 && /[a-zA-Z]/.test(lines[i])) {
+        detectedName = lines[i];
+        break;
+      }
+    }
+  }
+  parsed.name = detectedName || 'Applicant';
 
   // 2. Extract Email
   const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
@@ -138,13 +268,27 @@ const parseResumeText = (text, originalName) => {
     parsed.email = emailMatch[0];
   }
 
-  // 3. Extract Phone
-  const phoneMatch = text.match(/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
-  if (phoneMatch) {
-    parsed.phone = phoneMatch[0];
+  // 3. Extract Phone (improved to handle international formats)
+  const phonePatterns = [
+    /(?:\+\d{1,3}[\s-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/,
+    /(?:\+\d{1,3}[\s-]?)?\d{5}[\s-]?\d{5}/,  // Indian format: +91 98765 43210
+    /(?:\+\d{1,3}[\s-]?)?\d{10}/              // 10-digit continuous
+  ];
+  for (const pattern of phonePatterns) {
+    const match = text.match(pattern);
+    if (match && match[0].replace(/\D/g, '').length >= 10) {
+      parsed.phone = match[0];
+      break;
+    }
   }
 
-  // 4. Extract Target Role
+  // 4. Extract LinkedIn URL
+  const linkedinMatch = text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+\/?/i);
+  if (linkedinMatch) {
+    parsed.linkedin = linkedinMatch[0];
+  }
+
+  // 5. Extract Target Role
   let detectedRole = '';
   for (const role of KNOWN_ROLES) {
     const regex = new RegExp(`\\b${role}\\b`, 'i');
@@ -155,7 +299,7 @@ const parseResumeText = (text, originalName) => {
   }
   parsed.role = detectedRole || 'Software Engineer';
 
-  // 5. Extract Skills
+  // 6. Extract Skills
   const detectedSkills = [];
   for (const skill of KNOWN_SKILLS) {
     const escapeSkill = skill.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -171,7 +315,7 @@ const parseResumeText = (text, originalName) => {
   }
   parsed.skills = detectedSkills.length > 0 ? detectedSkills.slice(0, 12) : ['JavaScript', 'React', 'Git'];
 
-  // 6. Extract Professional Summary
+  // 7. Extract Professional Summary
   const lowerText = text.toLowerCase();
   const summaryKeywords = ['summary', 'professional summary', 'profile', 'objective', 'about me'];
   let summaryText = '';
@@ -194,12 +338,126 @@ const parseResumeText = (text, originalName) => {
   }
   parsed.summary = summaryText;
 
-  // 7. Extract Experience Bullet Points
+  // 8. Extract Experience entries
+  const experienceEntries = [];
+  const expSectionKeywords = ['experience', 'employment', 'work history', 'professional experience'];
+  const sectionEndKeywords = ['education', 'skills', 'projects', 'certifications', 'awards', 'languages', 'interests', 'references'];
+  
+  for (const keyword of expSectionKeywords) {
+    const idx = lowerText.indexOf(keyword);
+    if (idx !== -1) {
+      const afterKeyword = text.slice(idx + keyword.length).trim();
+      // Find where the next section starts
+      let endIdx = afterKeyword.length;
+      for (const endKw of sectionEndKeywords) {
+        const eIdx = afterKeyword.toLowerCase().indexOf(endKw);
+        if (eIdx !== -1 && eIdx < endIdx) {
+          endIdx = eIdx;
+        }
+      }
+      const expSection = afterKeyword.slice(0, endIdx);
+      const expLines = expSection.split(/[\r\n]+/).map(l => l.trim()).filter(l => l.length > 0);
+      
+      // Try to detect company/title lines (heuristic: lines without bullet points that aren't too long)
+      let currentEntry = null;
+      for (const line of expLines) {
+        const isBullet = /^[•\-\*]\s*/.test(line);
+        const hasYear = /\b(19|20)\d{2}\b/.test(line);
+        const hasDash = /\s[-–—]\s/.test(line);
+        
+        if (!isBullet && line.length < 120 && (hasYear || hasDash || line.length < 60)) {
+          // This looks like a company/title line
+          if (currentEntry && (currentEntry.company || currentEntry.title)) {
+            experienceEntries.push(currentEntry);
+          }
+          // Try to extract year/duration
+          const yearMatch = line.match(/\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s,]*\d{4})\s*[-–—]\s*((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*[\s,]*\d{4}|Present|Current)/i) 
+            || line.match(/\b(\d{4})\s*[-–—]\s*(\d{4}|Present|Current)\b/i);
+          const duration = yearMatch ? yearMatch[0] : '';
+          const titleLine = yearMatch ? line.replace(yearMatch[0], '').trim() : line;
+          
+          currentEntry = {
+            id: `exp-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+            company: titleLine.split(/\s*[-–—|,]\s*/)[0]?.trim() || titleLine,
+            title: titleLine.split(/\s*[-–—|,]\s*/)[1]?.trim() || '',
+            duration: duration,
+            description: ''
+          };
+        } else if (isBullet && currentEntry) {
+          const point = line.replace(/^[•\-\*]\s*/, '').trim();
+          currentEntry.description += (currentEntry.description ? '\n' : '') + point;
+        }
+      }
+      if (currentEntry && (currentEntry.company || currentEntry.title)) {
+        experienceEntries.push(currentEntry);
+      }
+      break;
+    }
+  }
+  parsed.experience = experienceEntries.slice(0, 5);
+
+  // 9. Extract Education entries
+  const educationEntries = [];
+  const eduIdx = lowerText.indexOf('education');
+  if (eduIdx !== -1) {
+    const afterEdu = text.slice(eduIdx + 'education'.length).trim();
+    let endIdx = afterEdu.length;
+    for (const endKw of ['experience', 'skills', 'projects', 'certifications', 'awards', 'languages', 'interests', 'references']) {
+      const eIdx = afterEdu.toLowerCase().indexOf(endKw);
+      if (eIdx !== -1 && eIdx < endIdx) {
+        endIdx = eIdx;
+      }
+    }
+    const eduSection = afterEdu.slice(0, endIdx);
+    const eduLines = eduSection.split(/[\r\n]+/).map(l => l.trim()).filter(l => l.length > 0 && !isJunkString(l));
+    
+    let currentEdu = null;
+    for (const line of eduLines) {
+      const hasYear = /\b(19|20)\d{2}\b/.test(line);
+      const hasDegree = /\b(B\.?S\.?c?|M\.?S\.?c?|B\.?A\.?|M\.?A\.?|Ph\.?D|Bachelor|Master|Associate|Diploma|B\.?Tech|M\.?Tech|B\.?E\.?|M\.?E\.?|MBA|BCA|MCA)\b/i.test(line);
+      const isBullet = /^[•\-\*]\s*/.test(line);
+      
+      if (!isBullet && (hasDegree || hasYear || (line.length < 80 && /university|college|institute|school/i.test(line)))) {
+        if (currentEdu) {
+          educationEntries.push(currentEdu);
+        }
+        const yearMatch = line.match(/\b(19|20)\d{2}\b/g);
+        const year = yearMatch ? yearMatch[yearMatch.length - 1] : '';
+        
+        currentEdu = {
+          id: `edu-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          institution: '',
+          degree: '',
+          year: year
+        };
+        
+        // Try to split into institution and degree
+        if (hasDegree) {
+          const degreeMatch = line.match(/\b(B\.?S\.?c?|M\.?S\.?c?|B\.?A\.?|M\.?A\.?|Ph\.?D|Bachelor[^,]*|Master[^,]*|Associate[^,]*|Diploma[^,]*|B\.?Tech[^,]*|M\.?Tech[^,]*|B\.?E\.?[^,]*|M\.?E\.?[^,]*|MBA[^,]*|BCA[^,]*|MCA[^,]*)/i);
+          if (degreeMatch) {
+            currentEdu.degree = degreeMatch[0].trim();
+            const remaining = line.replace(degreeMatch[0], '').replace(/\b\d{4}\b/g, '').replace(/[-–—,|]/g, ' ').trim();
+            currentEdu.institution = remaining || '';
+          } else {
+            currentEdu.institution = line.replace(/\b\d{4}\b/g, '').trim();
+          }
+        } else {
+          currentEdu.institution = line.replace(/\b\d{4}\b/g, '').trim();
+        }
+      }
+    }
+    if (currentEdu) {
+      educationEntries.push(currentEdu);
+    }
+  }
+  parsed.education = educationEntries.slice(0, 4);
+
+  // 10. Extract Experience Bullet Points (for selectedPoints)
   const bulletPoints = [];
   lines.forEach(line => {
     if (/^[•\-\*]\s*(.+)/.test(line)) {
       const point = line.replace(/^[•\-\*]\s*/, '').trim();
-      if (point.length > 15 && point.length < 200) {
+      if (point.length > 15 && point.length < 200 && !isJunkString(point)) {
         bulletPoints.push(point);
       }
     }
@@ -214,6 +472,9 @@ const parseResumeText = (text, originalName) => {
       "Collaborated with cross-functional teams in an Agile development environment to meet project milestones."
     ];
   }
+
+  console.log('[Resume Parser] Parsed name:', parsed.name, '| email:', parsed.email, '| phone:', parsed.phone, '| linkedin:', parsed.linkedin);
+  console.log('[Resume Parser] Skills:', parsed.skills.length, '| Experience:', parsed.experience.length, '| Education:', parsed.education.length);
 
   return parsed;
 };

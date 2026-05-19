@@ -5,3 +5,4 @@ dist/
 build/
 backend/uploads/
 *.log
+db.json
