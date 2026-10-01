@@ -1,5 +1,30 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import {
+  BookOpen, Search, AlertCircle, Trash2, ChevronDown, ChevronUp,
+  ExternalLink, RefreshCw, ShieldAlert, Sparkles, Clock, Play,
+  X, Award, FileText
+} from 'lucide-react';
 import { api, SERVER_BASE_URL } from '../services/api';
+
+function playChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.18, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.4);
+  } catch (e) {
+    console.warn("Audio chime could not play:", e);
+  }
+}
 
 // ── In-App Confirmation Modal ────────────────────────────────────────────────
 function ConfirmModal({ isOpen, title, message, confirmText, confirmVariant = 'danger', onConfirm, onCancel }) {
@@ -7,18 +32,28 @@ function ConfirmModal({ isOpen, title, message, confirmText, confirmVariant = 'd
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 1000,
-      background: 'rgba(0, 0, 0, 0.55)', backdropFilter: 'blur(3px)',
+      background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
     }} onClick={onCancel}>
-      <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '1.5rem', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
-        <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', color: confirmVariant === 'danger' ? '#ef4444' : 'var(--text-color)' }}>
-          {confirmVariant === 'danger' ? '⚠️ ' : ''}{title}
-        </h3>
-        <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+      <div className="card" style={{ maxWidth: '460px', width: '100%', padding: '1.75rem', borderRadius: '18px', boxShadow: 'var(--shadow-xl)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.75rem' }}>
+          <div style={{
+            width: '36px', height: '36px', borderRadius: '10px',
+            backgroundColor: confirmVariant === 'danger' ? '#fee2e2' : '#e0e7ff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: confirmVariant === 'danger' ? '#ef4444' : 'var(--primary)'
+          }}>
+            {confirmVariant === 'danger' ? <ShieldAlert size={20} /> : <AlertCircle size={20} />}
+          </div>
+          <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)' }}>
+            {title}
+          </h3>
+        </div>
+        <p style={{ margin: '0 0 1.5rem', fontSize: '0.875rem', color: '#64748b', lineHeight: '1.5' }}>
           {message}
         </p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem' }}>
-          <button type="button" className="btn btn-outline" onClick={onCancel} style={{ fontSize: '0.82rem', padding: '0.4rem 0.9rem' }}>
+          <button type="button" className="btn btn-outline" onClick={onCancel} style={{ fontSize: '12.5px', padding: '0.45rem 1rem', borderRadius: '10px' }}>
             Cancel
           </button>
           <button
@@ -26,8 +61,9 @@ function ConfirmModal({ isOpen, title, message, confirmText, confirmVariant = 'd
             className="btn btn-primary"
             onClick={onConfirm}
             style={{
-              fontSize: '0.82rem',
-              padding: '0.4rem 0.9rem',
+              fontSize: '12.5px',
+              padding: '0.45rem 1.15rem',
+              borderRadius: '10px',
               background: confirmVariant === 'danger' ? '#ef4444' : 'var(--primary)',
               borderColor: confirmVariant === 'danger' ? '#ef4444' : 'var(--primary)',
             }}
@@ -35,6 +71,374 @@ function ConfirmModal({ isOpen, title, message, confirmText, confirmVariant = 'd
             {confirmText || 'Confirm'}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Interactive Mock Interview Simulator Modal ──────────────────────────────
+function MockInterviewModal({ isOpen, onClose, allQuestions, onSaveSuccess }) {
+  const [step, setStep] = useState('config'); // 'config' | 'running' | 'summary'
+  const [count, setCount] = useState(3);
+  const [selectedQuestions, setSelectedQuestions] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(120); // 2 minutes
+  const [answers, setAnswers] = useState({});
+  const [activeSpeechField, setActiveSpeechField] = useState(null);
+  const recognitionRef = useRef(null);
+
+  useEffect(() => {
+    let timerId;
+    if (step === 'running' && timeLeft > 0) {
+      timerId = setInterval(() => {
+        setTimeLeft(t => {
+          if (t <= 1) {
+            playChime();
+            return 0;
+          }
+          return t - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timerId);
+  }, [step, timeLeft]);
+
+  // Clean speech recognition on close/unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) recognitionRef.current.stop();
+    };
+  }, []);
+
+  if (!isOpen) return null;
+
+  const startSession = () => {
+    const shuffled = [...allQuestions].sort(() => 0.5 - Math.random());
+    const picked = shuffled.slice(0, Math.min(count, allQuestions.length));
+    setSelectedQuestions(picked);
+    setCurrentIndex(0);
+    setTimeLeft(120);
+    const initialAns = {};
+    picked.forEach(q => {
+      initialAns[q.id] = {
+        situation: q.starAnswer?.situation || '',
+        task: q.starAnswer?.task || '',
+        action: q.starAnswer?.action || '',
+        result: q.starAnswer?.result || ''
+      };
+    });
+    setAnswers(initialAns);
+    setStep('running');
+    playChime();
+  };
+
+  const currentQ = selectedQuestions[currentIndex];
+  const currentAnswers = currentQ ? (answers[currentQ.id] || { situation: '', task: '', action: '', result: '' }) : {};
+
+  const handleAnswerChange = (field, val) => {
+    if (!currentQ) return;
+    setAnswers(prev => ({
+      ...prev,
+      [currentQ.id]: {
+        ...(prev[currentQ.id] || {}),
+        [field]: val
+      }
+    }));
+  };
+
+  const toggleSpeech = (field) => {
+    if (activeSpeechField === field) {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      setActiveSpeechField(null);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Voice dictation is supported in modern browsers like Chrome, Edge, and Safari.');
+      return;
+    }
+
+    if (recognitionRef.current) recognitionRef.current.stop();
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      let baseText = currentAnswers[field] || '';
+      if (baseText && !baseText.endsWith(' ')) baseText += ' ';
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          transcript += event.results[i][0].transcript;
+        }
+        handleAnswerChange(field, (baseText + transcript).trimStart());
+      };
+
+      recognition.onerror = () => setActiveSpeechField(null);
+      recognition.onend = () => setActiveSpeechField(null);
+
+      recognition.start();
+      recognitionRef.current = recognition;
+      setActiveSpeechField(field);
+    } catch {
+      setActiveSpeechField(null);
+    }
+  };
+
+  const nextQuestion = async () => {
+    if (activeSpeechField && recognitionRef.current) recognitionRef.current.stop();
+    // Save draft for current question
+    if (currentQ) {
+      await api.savePracticeAnswer(currentQ.id, currentAnswers, 'Practicing').catch(() => {});
+    }
+    if (currentIndex < selectedQuestions.length - 1) {
+      setCurrentIndex(i => i + 1);
+      setTimeLeft(120);
+      playChime();
+    } else {
+      setStep('summary');
+      playChime();
+      if (onSaveSuccess) onSaveSuccess();
+    }
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(10px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+    }}>
+      <div className="card" style={{ maxWidth: '780px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '2rem', borderRadius: '24px', boxShadow: 'var(--shadow-xl)', position: 'relative' }}>
+        
+        {/* Header Bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <div style={{ width: '38px', height: '38px', borderRadius: '12px', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Sparkles size={20} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800' }}>Mock Interview Simulator</h3>
+              <p style={{ margin: '0.15rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Real-time timed STAR response practice</p>
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'var(--surface-alt)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}>
+            <X size={16} />
+          </button>
+        </div>
+
+        {step === 'config' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', textAlign: 'center', padding: '1.5rem 0' }}>
+            <p style={{ fontSize: '0.95rem', color: 'var(--text-main)', maxWidth: '500px', margin: '0 auto', lineHeight: 1.5 }}>
+              Test your readiness under interview conditions. You will be given randomized questions with a 2-minute answer timer and voice dictation support.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+              {[3, 5].map(n => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setCount(n)}
+                  style={{
+                    padding: '1rem 1.5rem',
+                    borderRadius: '16px',
+                    border: count === n ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                    background: count === n ? 'rgba(79, 70, 229, 0.08)' : 'var(--surface)',
+                    color: count === n ? 'var(--primary)' : 'var(--text-main)',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    fontSize: '1rem'
+                  }}
+                >
+                  {n} Questions {n === 3 ? '(Quick Drill)' : '(Full Round)'}
+                </button>
+              ))}
+            </div>
+            <div style={{ marginTop: '0.5rem' }}>
+              <button className="btn btn-primary" onClick={startSession} style={{ padding: '0.65rem 2rem', fontSize: '0.95rem', borderRadius: '12px', gap: '0.5rem' }}>
+                <Play size={16} /> Begin Simulation
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'running' && currentQ && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {/* Progress & Countdown Bar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1rem', background: 'var(--surface-alt)', borderRadius: '12px' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-main)' }}>
+                Question {currentIndex + 1} of {selectedQuestions.length}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'monospace', fontSize: '1.25rem', fontWeight: '800', color: timeLeft <= 30 ? '#ef4444' : 'var(--primary)' }}>
+                <Clock size={18} />
+                {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+              </div>
+            </div>
+
+            {/* Question Text */}
+            <div style={{ padding: '1.25rem', borderRadius: '14px', background: 'rgba(79, 70, 229, 0.04)', border: '1px solid rgba(79, 70, 229, 0.2)' }}>
+              <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--primary)', color: 'white' }}>
+                  {currentQ.role || 'General'}
+                </span>
+                {currentQ.group && (
+                  <span style={{ fontSize: '11px', fontWeight: '600', padding: '0.2rem 0.5rem', borderRadius: '6px', background: 'var(--surface)', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                    {currentQ.group}
+                  </span>
+                )}
+              </div>
+              <h4 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)', lineHeight: 1.4 }}>
+                {currentQ.text || currentQ.originalName || 'Interview Question'}
+              </h4>
+            </div>
+
+            {/* STAR Response Inputs with Dictation */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
+              {[
+                { key: 'situation', label: 'S - Situation', hint: 'Context and problem background...' },
+                { key: 'task', label: 'T - Task', hint: 'Your core goal or constraint...' },
+                { key: 'action', label: 'A - Action', hint: 'What you personally designed and built...' },
+                { key: 'result', label: 'R - Result', hint: 'Measurable metric outcomes achieved...' },
+              ].map(sec => (
+                <div key={sec.key} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label style={{ fontSize: '11.5px', fontWeight: '700', color: 'var(--primary)' }}>{sec.label}</label>
+                    <button
+                      type="button"
+                      onClick={() => toggleSpeech(sec.key)}
+                      style={{
+                        background: activeSpeechField === sec.key ? '#ef4444' : 'transparent',
+                        color: activeSpeechField === sec.key ? '#fff' : 'var(--text-muted)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '12px',
+                        padding: '0.1rem 0.4rem',
+                        fontSize: '10.5px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.2rem'
+                      }}
+                    >
+                      {activeSpeechField === sec.key ? '🔴 Recording' : '🎙️ Dictate'}
+                    </button>
+                  </div>
+                  <textarea
+                    className="input"
+                    rows={3}
+                    style={{ fontSize: '12px', resize: 'vertical' }}
+                    placeholder={sec.hint}
+                    value={currentAnswers[sec.key] || ''}
+                    onChange={e => handleAnswerChange(sec.key, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem', marginTop: '0.5rem' }}>
+              <button className="btn btn-primary" onClick={nextQuestion} style={{ borderRadius: '10px', gap: '0.35rem' }}>
+                {currentIndex < selectedQuestions.length - 1 ? 'Next Question →' : 'Complete Interview ✓'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 'summary' && (
+          <div style={{ textAlign: 'center', padding: '1.5rem 0', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+              <Award size={32} />
+            </div>
+            <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '800', color: 'var(--text-main)' }}>
+              Mock Session Complete!
+            </h3>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)', maxWidth: '480px', alignSelf: 'center', lineHeight: 1.5 }}>
+              You answered {selectedQuestions.length} interview questions under simulated timing conditions. Your responses have been saved to your practice drafts bank.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.65rem', marginTop: '0.5rem' }}>
+              <button className="btn btn-primary" onClick={onClose} style={{ borderRadius: '10px' }}>
+                Done & Return to Hub
+              </button>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+// ── Printable STAR Cheat Sheet Modal ─────────────────────────────────────────
+function CheatSheetModal({ isOpen, onClose, questions }) {
+  if (!isOpen) return null;
+  const answered = questions.filter(q => {
+    const a = q.starAnswer;
+    return a && (a.situation || a.task || a.action || a.result);
+  });
+
+  const printSheet = () => {
+    window.print();
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(8px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+    }} onClick={onClose}>
+      <div className="card" style={{ maxWidth: '840px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '2rem', borderRadius: '20px', boxShadow: 'var(--shadow-xl)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: '800' }}>Pre-Interview STAR Cheat Sheet</h3>
+            <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Quick revision guide containing your structured STAR stories
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="btn btn-primary" onClick={printSheet} style={{ borderRadius: '10px', gap: '0.35rem', fontSize: '12px' }}>
+              <FileText size={14} /> Print / Save PDF
+            </button>
+            <button onClick={onClose} style={{ background: 'var(--surface-alt)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        {answered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
+            <p style={{ margin: 0, fontWeight: '700', fontSize: '1rem' }}>No STAR answers saved yet</p>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem' }}>Practice questions using the STAR framework to generate your customized pre-interview cheat sheet.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {answered.map((q, idx) => (
+              <div key={q.id || idx} style={{ padding: '1.15rem', borderRadius: '14px', border: '1px solid var(--border-color)', background: 'var(--surface)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '800', color: 'var(--text-main)' }}>
+                    {idx + 1}. {q.text || q.originalName}
+                  </h4>
+                  <span style={{ fontSize: '11px', fontWeight: '700', padding: '0.15rem 0.5rem', borderRadius: '9999px', background: 'rgba(79, 70, 229, 0.1)', color: 'var(--primary)' }}>
+                    {q.role || 'General'}
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '12.5px', marginTop: '0.5rem' }}>
+                  <div>
+                    <strong style={{ color: 'var(--primary)' }}>Situation:</strong> {q.starAnswer?.situation || '—'}
+                  </div>
+                  <div>
+                    <strong style={{ color: 'var(--primary)' }}>Task:</strong> {q.starAnswer?.task || '—'}
+                  </div>
+                  <div>
+                    <strong style={{ color: 'var(--primary)' }}>Action:</strong> {q.starAnswer?.action || '—'}
+                  </div>
+                  <div>
+                    <strong style={{ color: 'var(--primary)' }}>Result:</strong> {q.starAnswer?.result || '—'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -576,10 +980,13 @@ function QuestionPracticeHub({ q, onSaveSuccess }) {
 }
 
 function Preparation() {
+  const [searchUrlParams] = useSearchParams();
   const [searchParams, setSearchParams] = useState({ keyword: '', group: '', difficulty: '' });
   const [questions, setQuestions] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [collapsedGroups, setCollapsedGroups] = useState({});
+  const [isMockOpen, setIsMockOpen] = useState(false);
+  const [isCheatSheetOpen, setIsCheatSheetOpen] = useState(false);
 
   const toggleGroup = (groupName) => {
     setCollapsedGroups(prev => ({...prev, [groupName]: !prev[groupName]}));
@@ -613,7 +1020,13 @@ function Preparation() {
     let ignore = false;
     async function init() {
       try {
-        let data = await api.fetchQuestions({});
+        const roleQuery = searchUrlParams.get('role');
+        const filterToUse = roleQuery ? { keyword: roleQuery } : {};
+        if (roleQuery) {
+          setSearchParams(prev => ({ ...prev, keyword: roleQuery }));
+        }
+
+        let data = await api.fetchQuestions(filterToUse);
         data = data.map(q => {
           const stored = localStorage.getItem(`practice_question_${q.id}`);
           if (stored) {
@@ -637,7 +1050,7 @@ function Preparation() {
     }
     init();
     return () => { ignore = true; };
-  }, []);
+  }, [searchUrlParams]);
 
   const [modalConfig, setModalConfig] = useState({
     isOpen: false,
@@ -691,87 +1104,167 @@ function Preparation() {
   }, {});
 
   return (
-    <div>
-      <h1 style={{ marginBottom: '0.5rem' }}>Prep Hub</h1>
-      <p className="text-muted" style={{ marginBottom: '2rem' }}>Find and practice interview questions for any role</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative' }}>
+      <style>{`
+        .prep-card-hover {
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          border: 1px solid var(--border-color);
+          box-shadow: var(--shadow-xs);
+          border-radius: 14px;
+        }
+        .prep-card-hover:hover {
+          box-shadow: var(--shadow-md) !important;
+          border-color: #cbd5e1;
+        }
+      `}</style>
 
-      <div className="card" style={{ marginBottom: '2rem' }}>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end' }}>
-          <div style={{ flex: 1 }}>
-            <label className="text-sm">Search Keyword</label>
-            <input type="text" className="input" placeholder="e.g., React hooks" value={searchParams.keyword} onChange={(e) => setSearchParams({...searchParams, keyword: e.target.value})} />
+      {/* Page Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem' }}>
+        <div>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.2rem 0.65rem', borderRadius: '9999px', background: 'rgba(79, 70, 229, 0.08)', color: 'var(--primary)', fontSize: '11px', fontWeight: '700', marginBottom: '0.4rem' }}>
+            <BookOpen size={12} /> Interview Readiness Hub
           </div>
-          <div style={{ flex: 1 }}>
-            <label className="text-sm">Group</label>
-            <input type="text" className="input" placeholder="e.g., Core Java" value={searchParams.group} onChange={(e) => setSearchParams({...searchParams, group: e.target.value})} />
+          <h1 style={{ margin: 0, fontSize: '1.85rem', fontWeight: '800', letterSpacing: '-0.025em', color: 'var(--text-main)' }}>
+            Practice & AI Coaching
+          </h1>
+          <p className="text-muted" style={{ margin: '0.25rem 0 0', fontSize: '0.9rem' }}>
+            Master behavioral and technical questions using the STAR framework with real-time AI scoring.
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" style={{ fontSize: '12.5px', borderRadius: '10px', gap: '0.4rem' }} onClick={() => setIsMockOpen(true)}>
+            <Play size={13} /> Mock Simulator
+          </button>
+          <button className="btn btn-outline" style={{ fontSize: '12.5px', borderRadius: '10px', gap: '0.4rem' }} onClick={() => setIsCheatSheetOpen(true)}>
+            <FileText size={13} /> Cheat Sheet
+          </button>
+          {questions.length > 0 && (
+            <button className="btn btn-outline" style={{ color: '#ef4444', borderColor: '#fecaca', fontSize: '12.5px', borderRadius: '10px', gap: '0.35rem' }} onClick={handleDeleteAll}>
+              <Trash2 size={13} /> Reset All
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Search & Filter Card */}
+      <div className="card" style={{ padding: '1.35rem', borderRadius: '16px', boxShadow: 'var(--shadow-xs)' }}>
+        <form onSubmit={handleSearch} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr auto', gap: '1rem', alignItems: 'end' }}>
+          <div>
+            <label style={{ fontSize: '11.5px', fontWeight: '700', color: '#475569', marginBottom: '0.35rem', display: 'block' }}>Search Topic / Keyword</label>
+            <div style={{ position: 'relative' }}>
+              <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <input type="text" className="input" style={{ paddingLeft: '32px' }} placeholder="e.g. System Design, React hooks, Conflict..." value={searchParams.keyword} onChange={(e) => setSearchParams({...searchParams, keyword: e.target.value})} />
+            </div>
           </div>
           <div>
-            <label className="text-sm">Difficulty Level</label>
+            <label style={{ fontSize: '11.5px', fontWeight: '700', color: '#475569', marginBottom: '0.35rem', display: 'block' }}>Group / Category</label>
+            <input type="text" className="input" placeholder="e.g. Core Java, Frontend, Behavioral..." value={searchParams.group} onChange={(e) => setSearchParams({...searchParams, group: e.target.value})} />
+          </div>
+          <div>
+            <label style={{ fontSize: '11.5px', fontWeight: '700', color: '#475569', marginBottom: '0.35rem', display: 'block' }}>Difficulty</label>
             <select className="input" value={searchParams.difficulty} onChange={(e) => setSearchParams({...searchParams, difficulty: e.target.value})}>
-              <option value="">Any Difficulty</option>
+              <option value="">All Levels</option>
               <option value="Easy">Easy</option>
               <option value="Medium">Medium</option>
               <option value="Hard">Hard</option>
             </select>
           </div>
-          <button type="submit" className="btn btn-primary" style={{ height: '38px' }}>Search Questions</button>
+          <button type="submit" className="btn btn-primary" style={{ height: '38px', borderRadius: '10px', gap: '0.35rem', minWidth: '120px' }}>
+            <Search size={14} /> Filter
+          </button>
         </form>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3 style={{ margin: 0 }}>Frequently Asked Interview Questions</h3>
-        {questions.length > 0 && (
-          <button className="btn btn-outline" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={handleDeleteAll}>Clear All Questions</button>
-        )}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', marginTop: '1rem' }}>
-        {questions.length === 0 ? <p>No questions found.</p> : (
+      {/* Questions by Category Accordions */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        {questions.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem', borderRadius: '16px' }}>
+            <BookOpen size={36} style={{ color: '#94a3b8', marginBottom: '0.75rem' }} />
+            <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800' }}>No interview questions found</h3>
+            <p className="text-muted" style={{ margin: '0.25rem 0 1rem', fontSize: '0.85rem' }}>Adjust your keyword search or add custom questions via the Contribute page.</p>
+            <button className="btn btn-outline" onClick={() => loadQuestions({})} style={{ borderRadius: '10px', gap: '0.35rem' }}>
+              <RefreshCw size={13} /> Reset Filter
+            </button>
+          </div>
+        ) : (
           Object.entries(groupedQuestions).map(([groupName, groupQuestions]) => (
-            <div key={groupName}>
+            <div key={groupName} className="card" style={{ padding: '0', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-xs)' }}>
+              {/* Category Header */}
               <div 
-                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: '1rem', borderBottom: '2px solid var(--border-color)', paddingBottom: '0.5rem' }}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  cursor: 'pointer', padding: '1rem 1.35rem',
+                  backgroundColor: 'var(--surface-alt)', borderBottom: collapsedGroups[groupName] ? 'none' : '1px solid var(--border-color)',
+                  transition: 'background-color 0.15s'
+                }}
                 onClick={() => toggleGroup(groupName)}
               >
-                <h4 style={{ margin: 0, color: 'var(--primary)' }}>{groupName}</h4>
-                <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{collapsedGroups[groupName] ? '▼' : '▲'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--primary)' }} />
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '800', color: 'var(--text-main)' }}>{groupName}</h3>
+                  <span style={{ fontSize: '11px', fontWeight: '700', padding: '0.15rem 0.55rem', borderRadius: '9999px', backgroundColor: '#e0e7ff', color: 'var(--primary)' }}>
+                    {groupQuestions.length} question{groupQuestions.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <div style={{ color: 'var(--text-muted)' }}>
+                  {collapsedGroups[groupName] ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+                </div>
               </div>
               
               {!collapsedGroups[groupName] && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', padding: '1.25rem' }}>
                   {groupQuestions.map(q => (
-                    <div key={q.id} className="card" style={{ cursor: 'pointer' }} onClick={() => setExpandedId(expandedId === q.id ? null : q.id)}>
+                    <div key={q.id} className="prep-card-hover card" style={{ cursor: 'pointer', padding: '1.2rem', backgroundColor: 'var(--surface)' }} onClick={() => setExpandedId(expandedId === q.id ? null : q.id)}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
-                          <h4 style={{ margin: 0, fontSize: '1.1rem', textAlign: 'left' }}>{q.type === 'file' ? `📁 File: ${q.originalName}` : q.text}</h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
+                          <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: '700', color: 'var(--text-main)', textAlign: 'left', lineHeight: 1.3 }}>
+                            {q.type === 'file' ? `📁 File: ${q.originalName}` : q.text}
+                          </h4>
                           {q.practiceStatus && q.practiceStatus !== 'Not Started' && (
                             <span style={{
-                              padding: '0.2rem 0.5rem',
-                              fontSize: '0.65rem',
-                              fontWeight: 'bold',
-                              borderRadius: '12px',
-                              color: '#fff',
-                              backgroundColor: q.practiceStatus === 'Mastered' ? '#10b981' : '#f59e0b'
+                              padding: '0.2rem 0.6rem',
+                              fontSize: '11px',
+                              fontWeight: '700',
+                              borderRadius: '9999px',
+                              color: q.practiceStatus === 'Mastered' ? '#065f46' : '#92400e',
+                              backgroundColor: q.practiceStatus === 'Mastered' ? '#dcfce7' : '#fef3c7',
+                              border: `1px solid ${q.practiceStatus === 'Mastered' ? '#a7f3d0' : '#fde68a'}`,
+                              flexShrink: 0
                             }}>
                               {q.practiceStatus}
                             </span>
                           )}
                         </div>
-                        <span>{expandedId === q.id ? '▲' : '▼'}</span>
+                        <div style={{ color: '#94a3b8', paddingLeft: '0.75rem' }}>
+                          {expandedId === q.id ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                        </div>
                       </div>
+
                       {expandedId === q.id && (
-                        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
-                          <p className="text-sm text-muted" style={{ marginBottom: '0.5rem', textAlign: 'left' }}>Role: {q.role}</p>
-                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-                            {q.group && <span className="badge badge-neutral">Group: {q.group}</span>}
-                            {q.difficulty && <span className={`badge ${q.difficulty === 'Hard' ? 'badge-danger' : q.difficulty === 'Medium' ? 'badge-warning' : 'badge-success'}`}>{q.difficulty}</span>}
+                        <div style={{ marginTop: '1.15rem', paddingTop: '1.15rem', borderTop: '1px solid var(--border-color)' }}>
+                          {q.role && <p className="text-sm text-muted" style={{ marginBottom: '0.5rem', textAlign: 'left' }}>Role: <strong style={{ color: 'var(--text-main)' }}>{q.role}</strong></p>}
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
+                            {q.group && <span className="badge badge-neutral" style={{ fontSize: '11px' }}>Group: {q.group}</span>}
+                            {q.difficulty && (
+                              <span style={{
+                                fontSize: '11px', padding: '0.2rem 0.55rem', borderRadius: '6px', fontWeight: '700',
+                                backgroundColor: q.difficulty === 'Hard' ? '#fee2e2' : q.difficulty === 'Medium' ? '#fef3c7' : '#dcfce7',
+                                color: q.difficulty === 'Hard' ? '#991b1b' : q.difficulty === 'Medium' ? '#92400e' : '#166534'
+                              }}>
+                                {q.difficulty}
+                              </span>
+                            )}
                           </div>
-                          {q.keyAreas && <p className="text-sm text-muted" style={{ marginBottom: '0.5rem', textAlign: 'left' }}>Key Areas: {q.keyAreas}</p>}
+                          {q.keyAreas && <p className="text-sm text-muted" style={{ marginBottom: '0.75rem', textAlign: 'left' }}>Key Areas: {q.keyAreas}</p>}
                           
                           {q.type === 'file' && (
                             <div style={{ marginTop: '1rem', marginBottom: '1.5rem' }}>
-                              <a href={`${SERVER_BASE_URL}${q.path}`} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ display: 'inline-block', marginBottom: '1rem' }}>Download Document</a>
+                              <a href={`${SERVER_BASE_URL}${q.path}`} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginBottom: '1rem' }}>
+                                <ExternalLink size={14} /> Open Document
+                              </a>
                               {q.path.toLowerCase().endsWith('.pdf') ? (
-                                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                                <div style={{ border: '1px solid var(--border-color)', borderRadius: '12px', overflow: 'hidden' }}>
                                   <iframe src={`${SERVER_BASE_URL}${q.path}`} width="100%" height="400px" style={{ border: 'none' }} title="Document Preview"></iframe>
                                 </div>
                               ) : (
@@ -784,7 +1277,9 @@ function Preparation() {
                           <QuestionPracticeHub key={q.id} q={q} onSaveSuccess={loadQuestions} />
 
                           <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px dashed var(--border-color)', paddingTop: '1rem' }}>
-                            <button className="btn btn-outline" style={{ color: 'var(--danger)', borderColor: 'var(--danger)', padding: '0.25rem 0.75rem', fontSize: '0.75rem' }} onClick={(e) => handleDelete(e, q.id)}>Delete Question</button>
+                            <button className="btn btn-outline" style={{ color: '#ef4444', borderColor: '#fecaca', padding: '0.3rem 0.85rem', fontSize: '12px', gap: '0.35rem' }} onClick={(e) => handleDelete(e, q.id)}>
+                              <Trash2 size={13} /> Delete Question
+                            </button>
                           </div>
                         </div>
                       )}
@@ -796,6 +1291,7 @@ function Preparation() {
           ))
         )}
       </div>
+
       {/* Confirmation Modal */}
       <ConfirmModal
         isOpen={modalConfig.isOpen}
@@ -805,6 +1301,21 @@ function Preparation() {
         confirmVariant="danger"
         onConfirm={modalConfig.onConfirm}
         onCancel={closeModal}
+      />
+
+      {/* Mock Interview Simulator Modal */}
+      <MockInterviewModal
+        isOpen={isMockOpen}
+        onClose={() => setIsMockOpen(false)}
+        allQuestions={questions}
+        onSaveSuccess={() => loadQuestions(searchParams)}
+      />
+
+      {/* Printable Cheat Sheet Modal */}
+      <CheatSheetModal
+        isOpen={isCheatSheetOpen}
+        onClose={() => setIsCheatSheetOpen(false)}
+        questions={questions}
       />
     </div>
   );

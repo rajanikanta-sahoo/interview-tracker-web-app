@@ -1,19 +1,34 @@
 import { useState, useEffect, useRef } from 'react';
+import {
+  Briefcase, BookOpen, UploadCloud, Check, AlertCircle, Trash2,
+  Plus, Sparkles, Eye, RefreshCw, Layers
+} from 'lucide-react';
 import { api } from '../services/api';
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 function Toast({ msg, type }) {
   if (!msg) return null;
+  const isSuccess = type === 'success';
   return (
     <div style={{
-      position: 'fixed', top: '1.5rem', right: '1.5rem', zIndex: 9999,
-      padding: '0.8rem 1.25rem', borderRadius: '10px',
-      backgroundColor: type === 'success' ? '#10b981' : '#ef4444',
-      color: '#fff', fontWeight: '600', fontSize: '0.9rem',
-      boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+      position: 'fixed', top: '24px', right: '24px', zIndex: 9999,
+      padding: '0.85rem 1.25rem', borderRadius: '12px',
+      backgroundColor: '#ffffff',
+      color: isSuccess ? '#065f46' : '#991b1b',
+      border: `1px solid ${isSuccess ? '#a7f3d0' : '#fecaca'}`,
+      fontWeight: '600', fontSize: '13px',
+      boxShadow: 'var(--shadow-xl)',
       animation: 'slideInRight 0.3s ease',
+      display: 'flex', alignItems: 'center', gap: '0.65rem'
     }}>
-      {type === 'success' ? '✓' : '✕'} {msg}
+      <div style={{
+        width: '24px', height: '24px', borderRadius: '50%',
+        backgroundColor: isSuccess ? '#dcfce7' : '#fee2e2',
+        display: 'flex', alignItems: 'center', justifyContent: 'center'
+      }}>
+        {isSuccess ? <Check size={14} style={{ color: '#16a34a' }} /> : <AlertCircle size={14} style={{ color: '#dc2626' }} />}
+      </div>
+      <span>{msg}</span>
     </div>
   );
 }
@@ -22,26 +37,34 @@ function Toast({ msg, type }) {
 function StatsHeader({ questions, jobs }) {
   const files = questions.filter(q => q.type === 'file').length;
   const items = [
-    { icon: '📝', label: 'Questions', value: questions.length, color: '#8b5cf6' },
-    { icon: '💼', label: 'Custom Jobs', value: jobs.length, color: '#3b82f6' },
-    { icon: '📎', label: 'Files Uploaded', value: files, color: '#f59e0b' },
+    { icon: <BookOpen size={20} />, label: 'Questions in Hub', value: questions.length, color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)' },
+    { icon: <Briefcase size={20} />, label: 'Community Jobs', value: jobs.length, color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
+    { icon: <UploadCloud size={20} />, label: 'Document Uploads', value: files, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
   ];
   return (
-    <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.75rem' }}>
       {items.map(s => (
-        <div key={s.label} style={{
-          flex: '1 1 140px', padding: '1rem 1.25rem', borderRadius: '12px',
-          border: '1px solid var(--border-color)', background: 'var(--card-bg)',
-          display: 'flex', alignItems: 'center', gap: '0.75rem',
-          transition: 'transform 0.2s',
+        <div key={s.label} className="card" style={{
+          padding: '1.25rem 1.4rem', borderRadius: '16px',
+          border: '1px solid var(--border-color)',
+          display: 'flex', alignItems: 'center', gap: '1rem',
+          boxShadow: 'var(--shadow-xs)',
+          transition: 'transform 0.2s ease, box-shadow 0.2s ease',
         }}
-          onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-          onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}
         >
-          <span style={{ fontSize: '1.4rem' }}>{s.icon}</span>
+          <div style={{
+            width: '44px', height: '44px', borderRadius: '12px',
+            backgroundColor: s.bg, color: s.color,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            {s.icon}
+          </div>
           <div>
-            <p style={{ margin: 0, fontSize: '1.6rem', fontWeight: 'bold', color: s.color, lineHeight: 1 }}>{s.value}</p>
-            <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)' }}>{s.label}</p>
+            <p style={{ margin: 0, fontSize: '1.75rem', fontWeight: '800', color: 'var(--text-main)', letterSpacing: '-0.02em', lineHeight: 1 }}>{s.value}</p>
+            <p style={{ margin: '0.2rem 0 0', fontSize: '0.75rem', fontWeight: '600', color: '#64748b' }}>{s.label}</p>
           </div>
         </div>
       ))}
@@ -53,27 +76,41 @@ function StatsHeader({ questions, jobs }) {
 function JobPreviewCard({ form }) {
   const hasContent = form.title || form.company;
   if (!hasContent) return (
-    <div style={{ padding: '1.5rem', border: '2px dashed var(--border-color)', borderRadius: '12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-      <p style={{ fontSize: '1.5rem', margin: '0 0 0.5rem' }}>👁️</p>
-      Fill in the form to see a live preview
+    <div style={{
+      padding: '1.75rem 1rem', border: '1.5px dashed #cbd5e1', borderRadius: '14px',
+      textAlign: 'center', color: '#94a3b8', fontSize: '12.5px',
+      backgroundColor: '#f8fafc'
+    }}>
+      <Eye size={24} style={{ color: '#94a3b8', marginBottom: '0.35rem' }} />
+      <p style={{ margin: 0, fontWeight: '600', color: '#64748b' }}>Live Card Preview</p>
+      <p style={{ margin: '0.2rem 0 0', fontSize: '11.5px' }}>Fill in the form to see how candidates see this job</p>
     </div>
   );
   return (
     <div style={{
-      padding: '1rem', borderRadius: '12px', border: '1.5px solid var(--primary)',
-      background: 'rgba(59,130,246,0.04)',
+      padding: '1.25rem', borderRadius: '14px', border: '1px solid rgba(79, 70, 229, 0.25)',
+      background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.03) 0%, rgba(59, 130, 246, 0.03) 100%)',
+      boxShadow: 'var(--shadow-xs)'
     }}>
-      <p style={{ margin: '0 0 0.25rem', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--primary)', fontWeight: '700' }}>Live Preview</p>
-      <h4 style={{ margin: '0 0 0.15rem', fontSize: '1rem' }}>{form.title || 'Job Title'}</h4>
-      <p style={{ margin: '0 0 0.5rem', fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: '600' }}>{form.company || 'Company'}</p>
-      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-        {form.location && <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '10px', background: 'var(--bg-color)', border: '1px solid var(--border-color)' }}>📍 {form.location}</span>}
-        {form.type && <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '10px', background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.2)' }}>{form.type}</span>}
-        {form.salaryMin && <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '10px', background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)' }}>💰 {form.salaryMin}{form.salaryMax ? ` – ${form.salaryMax}` : '+'}</span>}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+        <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--primary)', fontWeight: '800' }}>
+          Live Preview
+        </span>
+        {form.type && (
+          <span style={{ fontSize: '10.5px', padding: '0.15rem 0.5rem', borderRadius: '9999px', background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', fontWeight: '600' }}>
+            {form.type}
+          </span>
+        )}
+      </div>
+      <h4 style={{ margin: '0 0 0.2rem', fontSize: '1.05rem', fontWeight: '800', color: 'var(--text-main)' }}>{form.title || 'Job Title'}</h4>
+      <p style={{ margin: '0 0 0.65rem', fontSize: '0.85rem', color: '#64748b', fontWeight: '600' }}>{form.company || 'Company Name'}</p>
+      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.65rem' }}>
+        {form.location && <span style={{ fontSize: '11px', padding: '0.2rem 0.55rem', borderRadius: '6px', background: '#ffffff', border: '1px solid #e2e8f0', color: '#475569', fontWeight: '500' }}>📍 {form.location}</span>}
+        {form.salaryMin && <span style={{ fontSize: '11px', padding: '0.2rem 0.55rem', borderRadius: '6px', background: '#ecfdf5', color: '#065f46', border: '1px solid #a7f3d0', fontWeight: '700' }}>💰 {form.salaryMin}{form.salaryMax ? ` – ${form.salaryMax}` : '+'}</span>}
       </div>
       {form.skills.length > 0 && (
-        <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-          {form.skills.map(s => <span key={s} style={{ fontSize: '0.68rem', padding: '0.1rem 0.4rem', borderRadius: '8px', background: 'var(--bg-color)', border: '1px solid var(--border-color)' }}>{s}</span>)}
+        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+          {form.skills.map(s => <span key={s} style={{ fontSize: '11px', padding: '0.15rem 0.5rem', borderRadius: '6px', background: '#ffffff', border: '1px solid #e2e8f0', color: '#334155', fontWeight: '500' }}>{s}</span>)}
         </div>
       )}
     </div>
@@ -88,46 +125,59 @@ function HistoryFeed({ questions, jobs, onDeleteQuestion, onDeleteJob }) {
   ].sort((a, b) => (b.id > a.id ? 1 : -1));
 
   if (all.length === 0) return (
-    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-      <p style={{ fontSize: '1.8rem', margin: 0 }}>📭</p>
-      <p style={{ margin: '0.5rem 0 0', fontSize: '0.85rem' }}>No contributions yet. Submit a question or job above!</p>
+    <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#94a3b8' }}>
+      <Layers size={32} style={{ color: '#cbd5e1', marginBottom: '0.5rem' }} />
+      <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: '600', color: '#64748b' }}>No contributions recorded yet</p>
+      <p style={{ margin: '0.25rem 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>Submit a new interview question or custom role above to see it here.</p>
     </div>
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.25rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', maxHeight: '420px', overflowY: 'auto', paddingRight: '0.25rem' }}>
       {all.map(item => (
         <div key={item.id} style={{
           display: 'flex', alignItems: 'center', gap: '0.75rem',
-          padding: '0.7rem 0.9rem', borderRadius: '10px',
-          border: '1px solid var(--border-color)', background: 'var(--card-bg)',
-          borderLeft: `3.5px solid ${item._kind === 'question' ? '#8b5cf6' : '#3b82f6'}`,
+          padding: '0.75rem 0.95rem', borderRadius: '12px',
+          border: '1px solid var(--border-color)', background: '#ffffff',
+          boxShadow: 'var(--shadow-xs)',
+          borderLeft: `4px solid ${item._kind === 'question' ? '#8b5cf6' : '#3b82f6'}`,
         }}>
-          <span style={{ fontSize: '1rem', flexShrink: 0 }}>{item._kind === 'question' ? (item.type === 'file' ? '📎' : '📝') : '💼'}</span>
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '8px',
+            backgroundColor: item._kind === 'question' ? 'rgba(139,92,246,0.1)' : 'rgba(59,130,246,0.1)',
+            color: item._kind === 'question' ? '#8b5cf6' : '#3b82f6',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            {item._kind === 'question' ? (item.type === 'file' ? <UploadCloud size={16} /> : <BookOpen size={16} />) : <Briefcase size={16} />}
+          </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {item._kind === 'question' ? (item.text || item.originalName || 'Uploaded file') : `${item.title} — ${item.company}`}
+            <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {item._kind === 'question' ? (item.text || item.originalName || 'Uploaded Document') : `${item.title} — ${item.company}`}
             </p>
-            <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
-              {item.group && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '8px', background: 'rgba(139,92,246,0.1)', color: '#8b5cf6' }}>{item.group}</span>}
+            <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
+              {item.group && <span style={{ fontSize: '10.5px', padding: '0.1rem 0.45rem', borderRadius: '6px', background: '#f3e8ff', color: '#7c3aed', fontWeight: '600' }}>{item.group}</span>}
               {item.difficulty && (
-                <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '8px',
-                  background: item.difficulty === 'Hard' ? 'rgba(239,68,68,0.1)' : item.difficulty === 'Medium' ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.1)',
-                  color: item.difficulty === 'Hard' ? '#ef4444' : item.difficulty === 'Medium' ? '#f59e0b' : '#10b981',
+                <span style={{ fontSize: '10.5px', padding: '0.1rem 0.45rem', borderRadius: '6px', fontWeight: '700',
+                  background: item.difficulty === 'Hard' ? '#fee2e2' : item.difficulty === 'Medium' ? '#fef3c7' : '#dcfce7',
+                  color: item.difficulty === 'Hard' ? '#991b1b' : item.difficulty === 'Medium' ? '#92400e' : '#166534',
                 }}>{item.difficulty}</span>
               )}
-              {item.role && item.role !== 'General' && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '8px', background: 'var(--bg-color)', color: 'var(--text-muted)' }}>{item.role}</span>}
-              {item.type && item.type !== 'text' && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '8px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>file</span>}
+              {item.role && item.role !== 'General' && <span style={{ fontSize: '10.5px', padding: '0.1rem 0.45rem', borderRadius: '6px', background: '#f1f5f9', color: '#475569', fontWeight: '600' }}>{item.role}</span>}
             </div>
           </div>
           {item._kind === 'question' ? (
             <button onClick={() => onDeleteQuestion(item.id)}
-              style={{ background: 'none', border: '1.5px solid #ef4444', borderRadius: '6px', color: '#ef4444', cursor: 'pointer', width: '26px', height: '26px', fontSize: '0.8rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              title="Delete Question">✕</button>
+              style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', color: '#ef4444', cursor: 'pointer', width: '28px', height: '28px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Delete Question">
+              <Trash2 size={13} />
+            </button>
           ) : (
             <button onClick={() => onDeleteJob(item.id)}
-              style={{ background: 'none', border: '1.5px solid #ef4444', borderRadius: '6px', color: '#ef4444', cursor: 'pointer', width: '26px', height: '26px', fontSize: '0.8rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              title="Delete Custom Job">✕</button>
+              style={{ background: 'none', border: '1px solid #fecaca', borderRadius: '8px', color: '#ef4444', cursor: 'pointer', width: '28px', height: '28px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Delete Custom Job">
+              <Trash2 size={13} />
+            </button>
           )}
         </div>
       ))}
@@ -257,28 +307,39 @@ function Contribute() {
     } catch { showToast('Could not delete job.', 'error'); }
   };
 
-  const TAB_STYLE = (active) => ({
-    flex: 1, padding: '0.5rem', background: 'none', cursor: 'pointer', fontWeight: active ? '700' : 'normal',
-    border: 'none', borderBottom: active ? '2.5px solid var(--primary)' : '2px solid transparent',
-    color: active ? 'var(--primary)' : 'var(--text-muted)', fontSize: '0.85rem', transition: 'all 0.15s',
-  });
-
   return (
-    <div>
-      <style>{`@keyframes slideInRight { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:translateX(0); } }`}</style>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'relative' }}>
+      <style>{`
+        @keyframes slideInRight { from { opacity:0; transform:translateX(40px); } to { opacity:1; transform:translateX(0); } }
+      `}</style>
       <Toast msg={toast.msg} type={toast.type} />
 
-      <h1 style={{ marginBottom: '0.25rem' }}>Contribute & Evaluate</h1>
-      <p className="text-muted" style={{ marginBottom: '1.5rem' }}>Submit job openings and interview questions to build the knowledge base.</p>
+      {/* Page Header */}
+      <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '1.25rem' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.2rem 0.65rem', borderRadius: '9999px', background: 'rgba(79, 70, 229, 0.08)', color: 'var(--primary)', fontSize: '11px', fontWeight: '700', marginBottom: '0.4rem' }}>
+          <Sparkles size={12} /> Community Knowledge Base
+        </div>
+        <h1 style={{ margin: 0, fontSize: '1.85rem', fontWeight: '800', letterSpacing: '-0.025em', color: 'var(--text-main)' }}>
+          Contribute & Publish
+        </h1>
+        <p className="text-muted" style={{ margin: '0.25rem 0 0', fontSize: '0.9rem' }}>
+          Publish custom job opportunities and expand interview question sets for the community.
+        </p>
+      </div>
 
       <StatsHeader questions={questions} jobs={jobs} />
 
-      {/* ── Two-column forms ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
+      {/* ── Two-column forms studio ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: '1.5rem' }}>
 
         {/* ════ Job Opening Form ════ */}
-        <div className="card">
-          <h2 style={{ marginBottom: '1.25rem', fontSize: '1.1rem' }}>💼 Add Custom Job Opening</h2>
+        <div className="card" style={{ padding: '1.75rem', borderRadius: '18px', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(59,130,246,0.1)', color: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Briefcase size={17} />
+            </div>
+            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)' }}>Add Custom Job Opening</h2>
+          </div>
           <form onSubmit={handleJobSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
@@ -353,8 +414,13 @@ function Contribute() {
         </div>
 
         {/* ════ Question Form ════ */}
-        <div className="card">
-          <h2 style={{ marginBottom: '1.25rem', fontSize: '1.1rem' }}>📝 Add Interview Questions</h2>
+        <div className="card" style={{ padding: '1.75rem', borderRadius: '18px', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.25rem' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(139,92,246,0.1)', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <BookOpen size={17} />
+            </div>
+            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)' }}>Add Interview Questions</h2>
+          </div>
           <form onSubmit={handleQSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -381,36 +447,56 @@ function Contribute() {
               </div>
             </div>
 
-            {/* Input mode tabs */}
-            <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)' }}>
-              {[['text','✏️ Single'], ['bulk','📋 Bulk Paste'], ['file','📎 Upload File']].map(([key, label]) => (
-                <button key={key} type="button" style={TAB_STYLE(qTab === key)} onClick={() => setQTab(key)}>{label}</button>
+            {/* Input mode pill tabs */}
+            <div style={{
+              display: 'flex', gap: '4px', backgroundColor: '#f1f5f9',
+              padding: '4px', borderRadius: '10px', border: '1px solid #e2e8f0', marginTop: '0.25rem'
+            }}>
+              {[
+                { key: 'text', label: 'Single Question' },
+                { key: 'bulk', label: 'Bulk Paste' },
+                { key: 'file', label: 'Upload File' }
+              ].map(tab => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setQTab(tab.key)}
+                  style={{
+                    flex: 1, padding: '0.35rem 0.5rem', borderRadius: '7px', fontSize: '12px', fontWeight: '700',
+                    border: 'none', cursor: 'pointer', transition: 'all 0.15s ease',
+                    backgroundColor: qTab === tab.key ? '#ffffff' : 'transparent',
+                    color: qTab === tab.key ? 'var(--primary)' : '#64748b',
+                    boxShadow: qTab === tab.key ? '0 1px 3px rgba(0,0,0,0.08)' : 'none'
+                  }}
+                >
+                  {tab.label}
+                </button>
               ))}
             </div>
 
             {qTab === 'text' && (
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                  <label className="text-sm">Question Text *</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label className="text-sm" style={{ fontWeight: '600' }}>Question Text *</label>
                   <span className="text-sm" style={{ color: qForm.text.length > 400 ? '#ef4444' : 'var(--text-muted)' }}>{qForm.text.length} chars</span>
                 </div>
                 <textarea required className="input" name="text" rows={6} value={qForm.text} onChange={handleQChange}
-                  placeholder="Type or paste a single interview question here..."
-                  style={{ resize: 'vertical', padding: '0.5rem', lineHeight: '1.5' }} />
+                  placeholder="Type or paste an interview question here..."
+                  style={{ resize: 'vertical', padding: '0.65rem', lineHeight: '1.5' }} />
               </div>
             )}
 
             {qTab === 'bulk' && (
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                  <label className="text-sm">One question per line</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label className="text-sm" style={{ fontWeight: '600' }}>One question per line</label>
                   <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
                     {bulkText.split('\n').filter(l => l.trim()).length} question{bulkText.split('\n').filter(l => l.trim()).length !== 1 ? 's' : ''}
                   </span>
                 </div>
                 <textarea className="input" rows={8} value={bulkText} onChange={e => setBulkText(e.target.value)}
                   placeholder={"What is the difference between HashMap and ConcurrentHashMap?\nExplain the Java memory model.\nWhat are SOLID principles?"}
-                  style={{ resize: 'vertical', padding: '0.5rem', lineHeight: '1.6', fontFamily: 'monospace', fontSize: '0.82rem' }} />
+                  style={{ resize: 'vertical', padding: '0.65rem', lineHeight: '1.6', fontFamily: 'monospace', fontSize: '0.82rem' }} />
                 <p className="text-sm text-muted" style={{ margin: '0.3rem 0 0' }}>Each non-empty line will be saved as a separate question in the same group.</p>
               </div>
             )}
@@ -422,17 +508,17 @@ function Contribute() {
                 onDrop={e => { e.preventDefault(); setDragging(false); const f = e.dataTransfer.files[0]; if (f) setQFile(f); }}
                 onClick={() => fileRef.current?.click()}
                 style={{
-                  padding: '2rem', borderRadius: '12px', textAlign: 'center', cursor: 'pointer',
-                  border: `2px dashed ${dragging ? 'var(--primary)' : 'var(--border-color)'}`,
-                  background: dragging ? 'rgba(59,130,246,0.06)' : 'transparent',
+                  padding: '2.25rem 1.5rem', borderRadius: '14px', textAlign: 'center', cursor: 'pointer',
+                  border: `2px dashed ${dragging ? 'var(--primary)' : '#cbd5e1'}`,
+                  background: dragging ? 'rgba(79,70,229,0.06)' : '#f8fafc',
                   transition: 'all 0.2s',
                 }}
               >
-                <p style={{ fontSize: '1.8rem', margin: '0 0 0.4rem' }}>📤</p>
+                <UploadCloud size={32} style={{ color: 'var(--primary)', marginBottom: '0.5rem' }} />
                 {qFile
-                  ? <p style={{ margin: 0, fontWeight: '600', color: 'var(--primary)' }}>📎 {qFile.name}</p>
+                  ? <p style={{ margin: 0, fontWeight: '700', color: 'var(--primary)' }}>📎 {qFile.name}</p>
                   : <>
-                    <p style={{ margin: '0 0 0.2rem', fontWeight: '600' }}>Drag & drop a questions file</p>
+                    <p style={{ margin: '0 0 0.2rem', fontWeight: '700', color: 'var(--text-main)', fontSize: '13.5px' }}>Drag & drop a questions document</p>
                     <p className="text-muted text-sm" style={{ margin: 0 }}>or click to browse — PDF or DOC supported</p>
                   </>
                 }
@@ -440,10 +526,10 @@ function Contribute() {
               </div>
             )}
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-color)' }}>
-              <button type="button" className="btn btn-outline" onClick={() => { setQForm(EMPTY_Q); setBulkText(''); setQFile(null); }}>Reset</button>
-              <button type="submit" className="btn btn-primary">
-                {qTab === 'text' ? 'Save Question' : qTab === 'bulk' ? 'Save All Questions' : 'Upload File'}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border-color)' }}>
+              <button type="button" className="btn btn-outline" style={{ borderRadius: '10px' }} onClick={() => { setQForm(EMPTY_Q); setBulkText(''); setQFile(null); }}>Reset</button>
+              <button type="submit" className="btn btn-primary" style={{ borderRadius: '10px', gap: '0.35rem' }}>
+                <Plus size={15} /> {qTab === 'text' ? 'Save Question' : qTab === 'bulk' ? 'Save All Questions' : 'Upload File'}
               </button>
             </div>
           </form>
@@ -451,10 +537,17 @@ function Contribute() {
       </div>
 
       {/* ── Contribution History ── */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.1rem' }}>📜 Contribution History</h2>
-          <button className="btn btn-outline" style={{ fontSize: '0.78rem', padding: '0.3rem 0.75rem', height: '30px' }} onClick={loadHistory}>↻ Refresh</button>
+      <div className="card" style={{ padding: '1.75rem', borderRadius: '18px', boxShadow: 'var(--shadow-sm)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#f1f5f9', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Layers size={17} />
+            </div>
+            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800', color: 'var(--text-main)' }}>Your Published Contributions</h2>
+          </div>
+          <button className="btn btn-outline" style={{ fontSize: '12px', padding: '0.35rem 0.85rem', height: '34px', borderRadius: '8px', gap: '0.35rem' }} onClick={loadHistory}>
+            <RefreshCw size={13} /> Refresh List
+          </button>
         </div>
         <HistoryFeed questions={questions} jobs={jobs} onDeleteQuestion={deleteQuestion} onDeleteJob={deleteJob} />
       </div>

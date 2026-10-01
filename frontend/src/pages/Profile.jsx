@@ -1,4 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
+import {
+  User, Target, FileText, Linkedin, Github, Globe,
+  Check, AlertCircle, Briefcase, Sparkles, BookOpen
+} from 'lucide-react';
 import { api, SERVER_BASE_URL } from '../services/api';
 import { storage } from '../services/storage';
 
@@ -37,24 +41,26 @@ function computeCompleteness(profile) {
 
 // ── SVG Completeness Ring ─────────────────────────────────────────────────────
 function CompletenessRing({ pct }) {
-  const r = 40, cx = 50, cy = 50;
+  const r = 38, cx = 46, cy = 46;
   const circ = 2 * Math.PI * r;
   const offset = circ - (pct / 100) * circ;
-  const color = pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#3b82f6';
+  const color = pct >= 80 ? '#10b981' : pct >= 50 ? '#f59e0b' : '#4f46e5';
   return (
-    <svg width="110" height="110" viewBox="0 0 100 100">
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--border-color)" strokeWidth="8" />
-      <circle
-        cx={cx} cy={cy} r={r} fill="none"
-        stroke={color} strokeWidth="8"
-        strokeDasharray={circ}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-        style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%', transition: 'stroke-dashoffset 0.6s ease' }}
-      />
-      <text x="50" y="46" textAnchor="middle" fill={color} fontSize="16" fontWeight="bold">{pct}%</text>
-      <text x="50" y="60" textAnchor="middle" fill="var(--text-muted)" fontSize="9">complete</text>
-    </svg>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <svg width="92" height="92" viewBox="0 0 92 92">
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="7" />
+        <circle
+          cx={cx} cy={cy} r={r} fill="none"
+          stroke={color} strokeWidth="7"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%', transition: 'stroke-dashoffset 0.8s ease' }}
+        />
+        <text x="46" y="44" textAnchor="middle" fill="#ffffff" fontSize="15" fontWeight="800">{pct}%</text>
+        <text x="46" y="58" textAnchor="middle" fill="#cbd5e1" fontSize="8.5" fontWeight="600">PROFILE</text>
+      </svg>
+    </div>
   );
 }
 
@@ -64,15 +70,24 @@ function Toast({ status }) {
   const isSuccess = status === 'success';
   return (
     <div style={{
-      position: 'fixed', top: '1.5rem', right: '1.5rem', zIndex: 9999,
-      display: 'flex', alignItems: 'center', gap: '0.6rem',
-      padding: '0.8rem 1.25rem', borderRadius: '10px',
-      backgroundColor: isSuccess ? '#10b981' : '#ef4444',
-      color: '#fff', fontWeight: '600', fontSize: '0.9rem',
-      boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+      position: 'fixed', top: '24px', right: '24px', zIndex: 9999,
+      display: 'flex', alignItems: 'center', gap: '0.65rem',
+      padding: '0.85rem 1.25rem', borderRadius: '12px',
+      backgroundColor: '#ffffff',
+      color: isSuccess ? '#065f46' : '#991b1b',
+      border: `1px solid ${isSuccess ? '#a7f3d0' : '#fecaca'}`,
+      fontWeight: '600', fontSize: '13px',
+      boxShadow: 'var(--shadow-xl)',
       animation: 'slideInRight 0.3s ease'
     }}>
-      {isSuccess ? '✓ Profile saved successfully!' : '✕ Save failed — please try again.'}
+      <div style={{
+        width: '24px', height: '24px', borderRadius: '50%',
+        backgroundColor: isSuccess ? '#dcfce7' : '#fee2e2',
+        display: 'flex', alignItems: 'center', justifyContent: 'center'
+      }}>
+        {isSuccess ? <Check size={14} style={{ color: '#16a34a' }} /> : <AlertCircle size={14} style={{ color: '#dc2626' }} />}
+      </div>
+      <span>{isSuccess ? 'Profile saved successfully!' : 'Save failed — please try again.'}</span>
     </div>
   );
 }
@@ -81,19 +96,22 @@ function Toast({ status }) {
 function StatCard({ icon, label, value, color }) {
   return (
     <div style={{
-      flex: 1, minWidth: '120px',
-      padding: '1.25rem', borderRadius: '12px',
+      flex: 1, minWidth: '140px',
+      padding: '1.25rem 1.35rem', borderRadius: '16px',
       border: '1px solid var(--border-color)',
       background: 'var(--card-bg)',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem',
-      transition: 'transform 0.2s',
+      display: 'flex', flexDirection: 'column', gap: '0.35rem',
+      boxShadow: 'var(--shadow-xs)',
+      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
     }}
-      onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-      onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--shadow-xs)'; }}
     >
-      <span style={{ fontSize: '1.6rem' }}>{icon}</span>
-      <span style={{ fontSize: '1.8rem', fontWeight: 'bold', color }}>{value}</span>
-      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}>{label}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</span>
+        <div style={{ color }}>{icon}</div>
+      </div>
+      <span style={{ fontSize: '1.85rem', fontWeight: '800', color: 'var(--text-main)', letterSpacing: '-0.02em', lineHeight: 1 }}>{value}</span>
     </div>
   );
 }
@@ -180,10 +198,32 @@ function Profile() {
       await api.updateProfile(profile);
       storage.saveProfile(profile);
       if (resumeFile) {
-        const res = await api.uploadResume(resumeFile);
-        const updated = { ...profile, resumePath: res.resumePath };
-        setProfile(updated);
-        storage.saveProfile(updated);
+        try {
+          const parsed = await api.uploadResumeAndParse(resumeFile);
+          if (parsed) {
+            const newSkills = Array.isArray(parsed.skills) && parsed.skills.length > 0
+              ? parsed.skills.map(s => typeof s === 'string' ? { name: s, level: 'Intermediate' } : s)
+              : profile.skills;
+            
+            const updated = {
+              ...profile,
+              name: profile.name || parsed.name || '',
+              role: profile.role || parsed.role || '',
+              bio: profile.bio || parsed.summary || '',
+              linkedin: profile.linkedin || parsed.linkedin || '',
+              skills: profile.skills?.length > 0 ? profile.skills : newSkills,
+              resumePath: parsed.path || (parsed.filename ? `/uploads/${parsed.filename}` : profile.resumePath)
+            };
+            setProfile(updated);
+            storage.saveProfile(updated);
+            await api.updateProfile(updated);
+          }
+        } catch {
+          const res = await api.uploadResume(resumeFile);
+          const updated = { ...profile, resumePath: res.resumePath };
+          setProfile(updated);
+          storage.saveProfile(updated);
+        }
         setResumeFile(null);
       }
       setSaveStatus('success');
@@ -205,79 +245,129 @@ function Profile() {
   const levelColor = { Beginner: '#3b82f6', Intermediate: '#f59e0b', Expert: '#10b981' };
 
   const TABS = [
-    { id: 'personal', label: '👤 Personal Info' },
-    { id: 'preferences', label: '🎯 Job Preferences' },
-    { id: 'resume', label: '📄 Resume & Docs' },
+    { id: 'personal', label: 'Personal Details', icon: <User size={15} /> },
+    { id: 'preferences', label: 'Job Preferences', icon: <Target size={15} /> },
+    { id: 'resume', label: 'Resume & Documents', icon: <FileText size={15} /> },
   ];
 
   return (
-    <div style={{ maxWidth: '860px', margin: '0 auto' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <style>{`
         @keyframes slideInRight {
           from { opacity: 0; transform: translateX(40px); }
           to   { opacity: 1; transform: translateX(0); }
         }
-        .profile-tab { background: none; border: none; padding: 0.6rem 1.25rem; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; color: var(--text-muted); }
-        .profile-tab:hover { background: var(--border-color); color: var(--text-color); }
-        .profile-tab.active { background: var(--primary); color: #fff; }
-        .skill-tag { display: flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.65rem; border-radius: 20px; border: 1.5px solid var(--border-color); font-size: 0.8rem; background: var(--card-bg); }
+        .profile-tab-pill {
+          display: flex; align-items: center; gap: 0.45rem;
+          padding: 0.55rem 1.25rem; border-radius: 10px;
+          cursor: pointer; font-weight: 600; font-size: 13px;
+          transition: all 0.15s ease;
+          border: 1px solid transparent;
+          background: transparent; color: #64748b;
+        }
+        .profile-tab-pill:hover { color: var(--text-main); background: var(--surface-alt); }
+        .profile-tab-pill.active {
+          background: var(--surface); color: var(--primary);
+          box-shadow: var(--shadow-sm); border-color: rgba(79, 70, 229, 0.2); font-weight: 700;
+        }
+        .skill-tag-modern {
+          display: inline-flex; align-items: center; gap: 0.45rem;
+          padding: 0.35rem 0.75rem; border-radius: 9999px;
+          border: 1px solid var(--border-color); font-size: 12px;
+          background: var(--surface); color: var(--text-main); box-shadow: var(--shadow-xs);
+        }
         .level-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-        .social-field { display: flex; align-items: center; gap: 0.6rem; }
-        .social-icon { width: 36px; height: 36px; border-radius: 8px; display:flex; align-items:center; justify-content:center; font-size:1.1rem; flex-shrink:0; }
       `}</style>
 
       <Toast status={saveStatus} />
 
-      {/* ── Profile Header ── */}
-      <div className="card" style={{ marginBottom: '1.5rem', textAlign: 'center', padding: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-          {/* Avatar */}
+      {/* ── Modern Profile Cover Banner ── */}
+      <div style={{
+        position: 'relative', overflow: 'hidden',
+        borderRadius: '20px',
+        background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #1e40af 100%)',
+        color: '#ffffff', padding: '2rem 2.25rem',
+        boxShadow: 'var(--shadow-lg)',
+        border: '1px solid rgba(255, 255, 255, 0.12)'
+      }}>
+        {/* Glow ambient background elements */}
+        <div style={{
+          position: 'absolute', top: '-50%', right: '10%', width: '300px', height: '300px',
+          background: 'radial-gradient(circle, rgba(99, 102, 241, 0.35) 0%, transparent 70%)',
+          pointerEvents: 'none'
+        }} />
+
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '1.75rem', flexWrap: 'wrap' }}>
+          {/* Avatar with Halo Ring */}
           <div style={{
-            width: '80px', height: '80px', borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--primary), #8b5cf6)',
+            width: '88px', height: '88px', borderRadius: '50%',
+            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1.8rem', fontWeight: 'bold', color: '#fff',
-            boxShadow: '0 4px 16px rgba(59,130,246,0.35)', flexShrink: 0
+            fontSize: '2rem', fontWeight: '800', color: '#ffffff',
+            boxShadow: '0 0 0 4px rgba(255, 255, 255, 0.25), 0 8px 24px rgba(0,0,0,0.3)',
+            flexShrink: 0
           }}>
             {getInitials(profile.name)}
           </div>
 
-          {/* Name + role */}
-          <div style={{ textAlign: 'left', flex: 1 }}>
-            <h2 style={{ margin: 0 }}>{profile.name || 'Your Name'}</h2>
-            <p style={{ margin: '0.2rem 0 0', color: 'var(--text-muted)' }}>
-              {profile.role || 'Your Role'}{profile.experience ? ` · ${profile.experience} yrs exp` : ''}
+          {/* Name + Role Details */}
+          <div style={{ flex: 1, minWidth: '220px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.2rem 0.65rem', borderRadius: '9999px', background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)', fontSize: '11px', fontWeight: '700', marginBottom: '0.4rem', color: '#e0e7ff' }}>
+              <Sparkles size={11} style={{ color: '#fbbf24' }} /> Candidate Profile
+            </div>
+            <h2 style={{ margin: '0 0 0.25rem 0', fontSize: '1.85rem', fontWeight: '800', letterSpacing: '-0.02em', color: '#ffffff' }}>
+              {profile.name || 'Set Your Name'}
+            </h2>
+            <p style={{ margin: 0, color: '#e0e7ff', fontSize: '0.95rem', fontWeight: '500' }}>
+              {profile.role || 'Add your target job title'}{profile.experience ? ` · ${profile.experience} years experience` : ''}
             </p>
-            {/* Social quick-links */}
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-              {profile.linkedin && <a href={profile.linkedin} target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: '#0077b5', textDecoration: 'none' }}>🔗 LinkedIn</a>}
-              {profile.github && <a href={profile.github} target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'none' }}>🐙 GitHub</a>}
-              {profile.portfolio && <a href={profile.portfolio} target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: 'var(--primary)', textDecoration: 'none' }}>🌐 Portfolio</a>}
+
+            {/* Social quick links */}
+            <div style={{ display: 'flex', gap: '0.65rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+              {profile.linkedin && (
+                <a href={profile.linkedin} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '12px', padding: '0.25rem 0.65rem', borderRadius: '8px', background: 'rgba(255,255,255,0.12)', color: '#ffffff', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.18)' }}>
+                  <Linkedin size={12} /> LinkedIn
+                </a>
+              )}
+              {profile.github && (
+                <a href={profile.github} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '12px', padding: '0.25rem 0.65rem', borderRadius: '8px', background: 'rgba(255,255,255,0.12)', color: '#ffffff', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.18)' }}>
+                  <Github size={12} /> GitHub
+                </a>
+              )}
+              {profile.portfolio && (
+                <a href={profile.portfolio} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '12px', padding: '0.25rem 0.65rem', borderRadius: '8px', background: 'rgba(255,255,255,0.12)', color: '#ffffff', textDecoration: 'none', border: '1px solid rgba(255,255,255,0.18)' }}>
+                  <Globe size={12} /> Portfolio
+                </a>
+              )}
             </div>
           </div>
 
-          {/* Completeness ring */}
+          {/* Completeness Ring */}
           <CompletenessRing pct={pct} />
-        </div>
-
-        {/* Stats row */}
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
-          <StatCard icon="📋" label="Applications Tracked" value={stats.applications} color="#3b82f6" />
-          <StatCard icon="📝" label="Questions in Prep Hub" value={stats.questions} color="#8b5cf6" />
-          <StatCard icon="📄" label="Resumes Built" value={stats.resumes} color="#10b981" />
         </div>
       </div>
 
-      {/* ── Tabs ── */}
-      <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+      {/* Career Stats Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+        <StatCard icon={<Briefcase size={20} />} label="Applications Tracked" value={stats.applications} color="#3b82f6" />
+        <StatCard icon={<BookOpen size={20} />} label="Questions in Prep Hub" value={stats.questions} color="#8b5cf6" />
+        <StatCard icon={<FileText size={20} />} label="Resumes Formatted" value={stats.resumes} color="#10b981" />
+      </div>
+
+      {/* ── Segmented Pill Tabs ── */}
+      <div style={{
+        display: 'flex', gap: '4px', backgroundColor: 'var(--surface-alt)',
+        padding: '5px', borderRadius: '14px', border: '1px solid var(--border-color)'
+      }}>
         {TABS.map(t => (
-          <button key={t.id} className={`profile-tab${activeTab === t.id ? ' active' : ''}`} onClick={() => setActiveTab(t.id)}>
+          <button key={t.id} className={`profile-tab-pill ${activeTab === t.id ? 'active' : ''}`} onClick={() => setActiveTab(t.id)}>
+            {t.icon}
             {t.label}
           </button>
         ))}
       </div>
 
-      <div className="card">
+      <div className="card" style={{ padding: '2rem', borderRadius: '18px', boxShadow: 'var(--shadow-sm)' }}>
 
         {/* ════ TAB: Personal Info ════ */}
         {activeTab === 'personal' && (

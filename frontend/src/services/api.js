@@ -1,4 +1,6 @@
-export const SERVER_BASE_URL = 'http://localhost:5001';
+export const SERVER_BASE_URL = typeof import.meta.env.VITE_API_URL !== 'undefined'
+  ? import.meta.env.VITE_API_URL
+  : (typeof window !== 'undefined' && window.location.port === '5173' ? 'http://localhost:5001' : '');
 export const API_BASE_URL = `${SERVER_BASE_URL}/api`;
 
 export const api = {
@@ -209,6 +211,19 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role, profileName, companyName })
     });
+    return res.json();
+  },
+
+  analyzeJDMatch: async (payload) => {
+    const res = await fetch(`${API_BASE_URL}/resume/analyze-jd`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || `Analysis failed with status ${res.status}`);
+    }
     return res.json();
   }
 };

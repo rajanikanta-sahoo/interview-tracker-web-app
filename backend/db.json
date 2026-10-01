@@ -158,7 +158,21 @@
   "coverLetters": [],
   "applications": {
     "applied": [],
-    "interviewing": [],
+    "interviewing": [
+      {
+        "id": "scraped-1779028000217-1",
+        "title": "Senior Engineer",
+        "company": "TechFlow Solutions",
+        "location": "New York, NY",
+        "type": "Full-Time",
+        "description": "Looking for an experienced professional to lead our engineering teams and architect scalable solutions.  ",
+        "postedAt": "2026-05-16T14:26:40.217Z",
+        "source": "Scraped (Simulated)",
+        "status": "Interviewing",
+        "trackedAt": "2026-05-17T14:26:43.085Z",
+        "round": "1"
+      }
+    ],
     "offer": [],
     "rejected": []
   }

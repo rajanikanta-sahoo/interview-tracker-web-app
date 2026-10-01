@@ -648,4 +648,426 @@ ${profileName || '[Your Name]'}
   res.json({ text: template });
 });
 
+// --- COMPREHENSIVE JD MATCHING & RESUME OPTIMIZER ENGINE ---
+
+const EXTENDED_SKILLS_CATALOG = [
+  // Languages
+  { name: 'JavaScript', category: 'Language', pattern: '\\b(?:JavaScript|JS|ES6\\+?)\\b' },
+  { name: 'TypeScript', category: 'Language', pattern: '\\b(?:TypeScript|TS)\\b' },
+  { name: 'Python', category: 'Language', pattern: '\\bPython(?:3)?\\b' },
+  { name: 'Java', category: 'Language', pattern: '\\bJava\\b(?!\\s*Script)' },
+  { name: 'C++', category: 'Language', pattern: '\\bC\\+\\+\\b' },
+  { name: 'C#', category: 'Language', pattern: '\\b(?:C#|\\.NET)\\b' },
+  { name: 'Go', category: 'Language', pattern: '\\b(?:Go|Golang)\\b' },
+  { name: 'Rust', category: 'Language', pattern: '\\bRust\\b' },
+  { name: 'Ruby', category: 'Language', pattern: '\\bRuby\\b' },
+  { name: 'PHP', category: 'Language', pattern: '\\bPHP\\b' },
+  { name: 'Swift', category: 'Language', pattern: '\\bSwift\\b' },
+  { name: 'Kotlin', category: 'Language', pattern: '\\bKotlin\\b' },
+  { name: 'SQL', category: 'Database', pattern: '\\bSQL\\b' },
+  { name: 'HTML5', category: 'Frontend', pattern: '\\b(?:HTML5?)\\b' },
+  { name: 'CSS3', category: 'Frontend', pattern: '\\b(?:CSS3?)\\b' },
+
+  // Frontend
+  { name: 'React', category: 'Frontend', pattern: '\\bReact(?:\\.js)?\\b' },
+  { name: 'Next.js', category: 'Frontend', pattern: '\\bNext(?:\\.js)?\\b' },
+  { name: 'Vue.js', category: 'Frontend', pattern: '\\bVue(?:\\.js)?\\b' },
+  { name: 'Angular', category: 'Frontend', pattern: '\\bAngular\\b' },
+  { name: 'Svelte', category: 'Frontend', pattern: '\\bSvelte\\b' },
+  { name: 'Redux', category: 'Frontend', pattern: '\\b(?:Redux|Redux Toolkit)\\b' },
+  { name: 'Tailwind CSS', category: 'Frontend', pattern: '\\b(?:Tailwind(?:CSS)?)\\b' },
+  { name: 'Bootstrap', category: 'Frontend', pattern: '\\bBootstrap\\b' },
+  { name: 'Webpack', category: 'Tool', pattern: '\\bWebpack\\b' },
+  { name: 'Vite', category: 'Tool', pattern: '\\bVite\\b' },
+  { name: 'Responsive Design', category: 'Frontend', pattern: '\\b(?:Responsive Design|Mobile-first)\\b' },
+  { name: 'Web Accessibility (a11y)', category: 'Frontend', pattern: '\\b(?:a11y|Accessibility|WCAG)\\b' },
+
+  // Backend
+  { name: 'Node.js', category: 'Backend', pattern: '\\bNode(?:\\.js)?\\b' },
+  { name: 'Express.js', category: 'Backend', pattern: '\\bExpress(?:\\.js)?\\b' },
+  { name: 'NestJS', category: 'Backend', pattern: '\\bNestJS\\b' },
+  { name: 'FastAPI', category: 'Backend', pattern: '\\bFastAPI\\b' },
+  { name: 'Django', category: 'Backend', pattern: '\\bDjango\\b' },
+  { name: 'Flask', category: 'Backend', pattern: '\\bFlask\\b' },
+  { name: 'Spring Boot', category: 'Backend', pattern: '\\b(?:Spring Boot|Spring Framework)\\b' },
+  { name: 'Ruby on Rails', category: 'Backend', pattern: '\\b(?:Rails|Ruby on Rails)\\b' },
+  { name: 'GraphQL', category: 'Backend', pattern: '\\bGraphQL\\b' },
+  { name: 'REST APIs', category: 'Backend', pattern: '\\b(?:REST|RESTful(?:\\s+APIs?)?|Web APIs?)\\b' },
+  { name: 'Microservices', category: 'Architecture', pattern: '\\b(?:Microservices|Microservice Architecture)\\b' },
+  { name: 'gRPC', category: 'Backend', pattern: '\\bgRPC\\b' },
+  { name: 'WebSockets', category: 'Backend', pattern: '\\bWebSockets?\\b' },
+
+  // Databases & Messaging
+  { name: 'PostgreSQL', category: 'Database', pattern: '\\b(?:PostgreSQL|Postgres)\\b' },
+  { name: 'MySQL', category: 'Database', pattern: '\\bMySQL\\b' },
+  { name: 'MongoDB', category: 'Database', pattern: '\\b(?:MongoDB|Mongo)\\b' },
+  { name: 'Redis', category: 'Database', pattern: '\\bRedis\\b' },
+  { name: 'Elasticsearch', category: 'Database', pattern: '\\bElasticsearch\\b' },
+  { name: 'DynamoDB', category: 'Database', pattern: '\\bDynamoDB\\b' },
+  { name: 'Kafka', category: 'Data/Messaging', pattern: '\\b(?:Kafka|Apache Kafka)\\b' },
+  { name: 'RabbitMQ', category: 'Data/Messaging', pattern: '\\bRabbitMQ\\b' },
+
+  // Cloud & DevOps
+  { name: 'AWS', category: 'Cloud', pattern: '\\b(?:AWS|Amazon Web Services)\\b' },
+  { name: 'Google Cloud (GCP)', category: 'Cloud', pattern: '\\b(?:GCP|Google Cloud(?:\\s+Platform)?)\\b' },
+  { name: 'Microsoft Azure', category: 'Cloud', pattern: '\\b(?:Azure|Microsoft Azure)\\b' },
+  { name: 'Docker', category: 'DevOps', pattern: '\\bDocker\\b' },
+  { name: 'Kubernetes', category: 'DevOps', pattern: '\\b(?:Kubernetes|K8s)\\b' },
+  { name: 'Terraform', category: 'DevOps', pattern: '\\bTerraform\\b' },
+  { name: 'CI/CD', category: 'DevOps', pattern: '\\b(?:CI/CD|CI-CD|Continuous Integration|Continuous Deployment)\\b' },
+  { name: 'GitHub Actions', category: 'DevOps', pattern: '\\bGitHub Actions\\b' },
+  { name: 'Linux', category: 'DevOps', pattern: '\\bLinux\\b' },
+  { name: 'Serverless', category: 'Cloud', pattern: '\\b(?:Serverless|AWS Lambda|Lambda functions?)\\b' },
+
+  // Testing
+  { name: 'Jest', category: 'Testing', pattern: '\\bJest\\b' },
+  { name: 'Cypress', category: 'Testing', pattern: '\\bCypress\\b' },
+  { name: 'Playwright', category: 'Testing', pattern: '\\bPlaywright\\b' },
+  { name: 'Unit Testing', category: 'Testing', pattern: '\\b(?:Unit Testing|Unit Tests?)\\b' },
+  { name: 'Integration Testing', category: 'Testing', pattern: '\\bIntegration Testing\\b' },
+  { name: 'TDD', category: 'Testing', pattern: '\\b(?:TDD|Test-Driven Development)\\b' },
+
+  // AI / ML / Data
+  { name: 'Machine Learning', category: 'AI/Data', pattern: '\\b(?:Machine Learning|ML)\\b' },
+  { name: 'TensorFlow', category: 'AI/Data', pattern: '\\bTensorFlow\\b' },
+  { name: 'PyTorch', category: 'AI/Data', pattern: '\\bPyTorch\\b' },
+  { name: 'Pandas', category: 'AI/Data', pattern: '\\bPandas\\b' },
+  { name: 'LLMs & Generative AI', category: 'AI/Data', pattern: '\\b(?:LLMs?|Large Language Models?|Generative AI|GenAI|OpenAI|Prompt Engineering)\\b' },
+  { name: 'Data Pipelines / ETL', category: 'AI/Data', pattern: '\\b(?:ETL|Data Pipelines?)\\b' }
+];
+
+const SOFT_SKILLS_CATALOG = [
+  { name: 'Agile & Scrum Methodologies', pattern: '\\b(?:Agile|Scrum|Sprint Planning|Kanban)\\b' },
+  { name: 'System Design & Architecture', pattern: '\\b(?:System Design|Architecture|Distributed Systems)\\b' },
+  { name: 'Cross-functional Collaboration', pattern: '\\b(?:Cross-functional|Collaborat(?:e|ing|ion)|Partnering with stakeholders)\\b' },
+  { name: 'Technical Mentorship & Leadership', pattern: '\\b(?:Leadership|Mentor(?:ing|ship)?|Team Lead|Guiding junior)\\b' },
+  { name: 'Code Reviews & Quality Standards', pattern: '\\b(?:Code Review|Clean Code|Best Practices|Code Quality)\\b' },
+  { name: 'Performance Optimization & Scalability', pattern: '\\b(?:Performance Optimiz(?:ation|e)|Low Latency|Scalability|High throughput)\\b' },
+  { name: 'Problem Solving & Analytical Thinking', pattern: '\\b(?:Problem Solving|Analytical Thinking|Critical Thinking)\\b' },
+  { name: 'Technical Documentation & RFCs', pattern: '\\b(?:Documentation|Technical Specs?|RFCs?|Design Docs?)\\b' },
+  { name: 'Product Sense & User Focus', pattern: '\\b(?:User Experience|Product-minded|User-centric|Product intuition)\\b' }
+];
+
+// Helper to normalize skill strings
+const normalizeSkillStr = (s) => {
+  if (!s) return '';
+  if (typeof s === 'string') return s.trim();
+  if (typeof s === 'object' && s.name) return String(s.name).trim();
+  return String(s).trim();
+};
+
+router.post('/analyze-jd', (req, res) => {
+  try {
+    const { jobDescription, targetRole = '', companyName = '', resumeId, resumeData, rawResumeText = '' } = req.body;
+
+    if (!jobDescription || jobDescription.trim().length < 20) {
+      return res.status(400).json({ error: 'Please provide a valid Job Description with at least 20 characters.' });
+    }
+
+    // Resolve resume object
+    const db = readDb();
+    let currentResume = resumeData;
+
+    if (!currentResume && resumeId && db.resumes) {
+      currentResume = db.resumes.find(r => r.id === resumeId);
+    }
+
+    if (!currentResume && (!rawResumeText || rawResumeText.trim().length === 0)) {
+      return res.status(400).json({ error: 'No resume provided. Please select a saved resume, upload a resume, or paste your resume content.' });
+    }
+
+    // Build consolidated text from resume
+    let resumeText = rawResumeText || '';
+    let candidateName = 'Applicant';
+    let currentRole = targetRole || 'Software Professional';
+    let resumeSkillsList = [];
+
+    if (currentResume) {
+      candidateName = currentResume.name || candidateName;
+      currentRole = currentResume.role || currentRole;
+      
+      const skillsArray = (currentResume.skills || []).map(normalizeSkillStr).filter(Boolean);
+      resumeSkillsList = skillsArray;
+
+      const expText = (currentResume.experience || []).map(e => `${e.title || ''} ${e.company || ''} ${e.description || ''}`).join('\n');
+      const eduText = (currentResume.education || []).map(ed => `${ed.degree || ''} ${ed.institution || ''}`).join('\n');
+      const bulletsText = (currentResume.selectedPoints || []).join('\n');
+
+      resumeText = `
+        ${currentResume.name || ''}
+        ${currentResume.role || ''}
+        ${currentResume.summary || ''}
+        Skills: ${skillsArray.join(', ')}
+        Experience: ${expText}
+        Education: ${eduText}
+        Highlights: ${bulletsText}
+        ${rawResumeText}
+      `;
+    }
+
+    const jdText = jobDescription.trim();
+
+    // 1. Detect target role from JD if not explicitly provided
+    let detectedJdRole = targetRole.trim();
+    if (!detectedJdRole) {
+      const roleMatches = KNOWN_ROLES.filter(r => new RegExp(`\\b${r}\\b`, 'i').test(jdText));
+      if (roleMatches.length > 0) {
+        detectedJdRole = roleMatches[0];
+      } else {
+        // Fallback: look at first line or title patterns
+        const firstLine = jdText.split(/[\r\n]+/)[0].trim();
+        if (firstLine.length < 50 && /engineer|developer|manager|lead|architect|analyst|designer/i.test(firstLine)) {
+          detectedJdRole = firstLine;
+        } else {
+          detectedJdRole = currentRole || 'Software Engineer';
+        }
+      }
+    }
+
+    // 2. Scan JD for technical skills
+    const matchedSkills = [];
+    const missingSkills = [];
+
+    EXTENDED_SKILLS_CATALOG.forEach(skill => {
+      const patternRegex = new RegExp(skill.pattern || `\\b${skill.name}\\b`, 'i');
+      if (patternRegex.test(jdText)) {
+        // Skill is required/mentioned in JD!
+        const isInResume = patternRegex.test(resumeText) || 
+          resumeSkillsList.some(rs => rs.toLowerCase() === skill.name.toLowerCase());
+        
+        // Priority calculation based on JD context
+        const isCritical = new RegExp(`(?:must|require|strong|essential|core|proficien[a-z]*|hands-on)[^.?!\\n]*${skill.name}`, 'i').test(jdText);
+
+        const skillObj = {
+          name: skill.name,
+          category: skill.category,
+          priority: isCritical ? 'Critical' : 'Important'
+        };
+
+        if (isInResume) {
+          matchedSkills.push(skillObj);
+        } else {
+          missingSkills.push(skillObj);
+        }
+      }
+    });
+
+    // 3. Scan JD for soft skills & methodologies
+    const matchedSoftSkills = [];
+    const missingSoftSkills = [];
+
+    SOFT_SKILLS_CATALOG.forEach(soft => {
+      const patternRegex = new RegExp(soft.pattern, 'i');
+      if (patternRegex.test(jdText)) {
+        const isInResume = patternRegex.test(resumeText);
+        if (isInResume) {
+          matchedSoftSkills.push(soft.name);
+        } else {
+          missingSoftSkills.push(soft.name);
+        }
+      }
+    });
+
+    // 4. Extract specific ATS keywords & requirement phrases from JD lines
+    const jdLines = jdText.split(/[\r\n]+/).map(l => l.trim()).filter(Boolean);
+    const missingKeywords = [];
+    
+    // Heuristic: identify requirement bullet points from JD
+    const requirementLines = jdLines.filter(line => 
+      /^[•\-\*0-9\.]\s*/.test(line) && line.length > 20 && line.length < 150
+    );
+
+    requirementLines.forEach(line => {
+      const cleanLine = line.replace(/^[•\-\*0-9\.]\s*/, '').trim();
+      // Extract key terms (e.g. phrases after "Experience with", "Knowledge of", "Ability to")
+      const matchKey = cleanLine.match(/(?:experience with|knowledge of|proficient in|hands-on with|familiarity with|strong understanding of)\s+([^,.;]+)/i);
+      if (matchKey && matchKey[1]) {
+        const keywordPhrase = matchKey[1].trim();
+        if (keywordPhrase.length > 3 && keywordPhrase.length < 40) {
+          const inResume = new RegExp(keywordPhrase.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&'), 'i').test(resumeText);
+          if (!inResume && !missingKeywords.includes(keywordPhrase)) {
+            missingKeywords.push(keywordPhrase);
+          }
+        }
+      }
+    });
+
+    // 5. Calculate Metrics & ATS Compatibility Score
+    const totalTechFoundInJd = matchedSkills.length + missingSkills.length;
+    const techRatio = totalTechFoundInJd > 0 ? (matchedSkills.length / totalTechFoundInJd) : 0.75;
+    
+    const totalSoftFoundInJd = matchedSoftSkills.length + missingSoftSkills.length;
+    const softRatio = totalSoftFoundInJd > 0 ? (matchedSoftSkills.length / totalSoftFoundInJd) : 0.75;
+
+    // Check for quantifiable metrics in resume
+    const metricMatches = (resumeText.match(/\b\d+[\s-]*(?:%|x|ms|s|k|M|users|clients|hours|dollars|\$)\b/gi) || []).length;
+    const quantScore = metricMatches >= 3 ? 15 : (metricMatches >= 1 ? 8 : 2);
+
+    // Title / role alignment score
+    const roleAligned = new RegExp(detectedJdRole.split(/\s+/).slice(-1)[0], 'i').test(currentRole);
+    const roleScore = roleAligned ? 15 : 5;
+
+    // Overall ATS Match Score (0 - 100)
+    let matchScore = Math.round(
+      (techRatio * 50) + 
+      (softRatio * 20) + 
+      roleScore + 
+      quantScore
+    );
+    matchScore = Math.min(96, Math.max(18, matchScore));
+
+    let matchLevel = 'Moderate Match (Gaps Detected)';
+    let matchBadgeColor = '#f59e0b';
+    if (matchScore >= 80) {
+      matchLevel = 'Strong Match (Ready to Apply)';
+      matchBadgeColor = '#10b981';
+    } else if (matchScore >= 60) {
+      matchLevel = 'Good Match (Minor Optimizations Needed)';
+      matchBadgeColor = '#3b82f6';
+    } else if (matchScore < 45) {
+      matchLevel = 'Low Match (Significant Gaps Detected)';
+      matchBadgeColor = '#ef4444';
+    }
+
+    // 6. Generate "What Needs to Be Added"
+    const topMissingSkills = missingSkills.slice(0, 8);
+    const topMissingSoft = missingSoftSkills.slice(0, 4);
+
+    // Generate Tailored Accomplishment Bullet Points to Add
+    const skill1 = topMissingSkills[0]?.name || 'modern web architectures';
+    const skill2 = topMissingSkills[1]?.name || 'cloud deployment pipelines';
+    const skill3 = topMissingSkills[2]?.name || 'automated testing';
+
+    const suggestedBulletPoints = [
+      `Architected and deployed scalable solutions utilizing ${skill1} and ${skill2}, reducing API latency by 35% across high-volume production endpoints.`,
+      `Engineered robust system features adhering to ${topMissingSoft[0] || 'Agile/Scrum principles'}, actively participating in sprint planning and peer code reviews.`,
+      `Integrated ${skill3} into the development lifecycle, boosting automated code test coverage from 60% to 92% and preventing critical release regressions.`,
+      `Collaborated closely with cross-functional product and design teams to translate business requirements into high-performing, accessible user interfaces.`
+    ];
+
+    // 7. Generate "What Optimization Is Required"
+    // A. Tailored Professional Summary
+    const matchedSkillsNames = matchedSkills.slice(0, 4).map(s => s.name);
+    const primaryStackStr = matchedSkillsNames.length > 0 ? matchedSkillsNames.join(', ') : 'modern full-stack technologies';
+    
+    const tailoredSummary = `Results-oriented ${detectedJdRole} with extensive experience architecting and delivering high-performance applications with ${primaryStackStr}. Adept at collaborating in cross-functional teams, solving complex technical challenges, and optimizing system reliability to drive measurable business outcomes${companyName ? ` at ${companyName}` : ''}.`;
+
+    // B. Actionable Optimizations List
+    const optimizationsRequired = [];
+
+    // Optimization 1: Summary Tailoring
+    optimizationsRequired.push({
+      id: 'summary-opt',
+      area: 'Professional Summary',
+      severity: 'high',
+      title: 'Align Summary with Target JD Keywords',
+      currentInsight: currentResume?.summary ? 'Your current summary is generic and does not highlight the specific tech stack demanded in this JD.' : 'No professional summary found on your resume.',
+      recommendation: `Update your executive summary to explicitly mention "${detectedJdRole}" and spotlight core competencies like ${primaryStackStr}.`,
+      actionableOutput: tailoredSummary,
+      actionType: 'apply_summary'
+    });
+
+    // Optimization 2: Missing Keywords & Hard Skills Integration
+    if (missingSkills.length > 0) {
+      optimizationsRequired.push({
+        id: 'skills-opt',
+        area: 'ATS Keyword Optimization',
+        severity: 'high',
+        title: `Inject ${missingSkills.length} Missing Technical Keywords`,
+        currentInsight: `ATS scanners for this job will filter for keywords like: ${missingSkills.slice(0, 5).map(s => s.name).join(', ')}.`,
+        recommendation: `Add the missing critical skills directly to your 'Skills' section, and reference them at least once in your experience bullet points.`,
+        actionableOutput: missingSkills.map(s => s.name).join(', '),
+        actionType: 'add_skills'
+      });
+    }
+
+    // Optimization 3: Metric Quantification & Impact
+    optimizationsRequired.push({
+      id: 'impact-opt',
+      area: 'Impact & Quantification',
+      severity: metricMatches < 3 ? 'high' : 'medium',
+      title: metricMatches < 3 ? 'Quantify Responsibilities with Concrete Metrics' : 'Strengthen Accomplishment Impact Statements',
+      currentInsight: metricMatches < 3 
+        ? `Found only ${metricMatches} quantifiable metrics in your resume. ATS algorithms and recruiters heavily favor statements with percentages (%), latencies, numbers of users, or time saved.` 
+        : `Good job including ${metricMatches} metrics! Ensure every single experience entry has at least 1 measurable outcome.`,
+      recommendation: 'Use the XYZ formula: Accomplished [X], as measured by [Y], by doing [Z].',
+      examples: [
+        {
+          before: 'Worked on backend APIs and database queries.',
+          after: `Optimized backend endpoints and database queries using ${topMissingSkills[0]?.name || 'PostgreSQL'}, decreasing latency by 45% for 100K+ daily active users.`
+        },
+        {
+          before: 'Helped the team ship features on schedule.',
+          after: `Spearheaded sprint feature delivery using ${topMissingSoft[0] || 'Agile methodologies'}, reducing release cycle time by 2 weeks.`
+        }
+      ]
+    });
+
+    // Optimization 4: Target Title Alignment
+    if (!roleAligned) {
+      optimizationsRequired.push({
+        id: 'title-opt',
+        area: 'Header & Job Title',
+        severity: 'medium',
+        title: 'Align Header Job Title to Match Job Description',
+        currentInsight: `Your resume lists "${currentRole}", whereas this job listing specifically seeks "${detectedJdRole}".`,
+        recommendation: `Set your resume headline/target role to "${detectedJdRole}". ATS parsers award significant relevance points when the candidate title matches the posting title.`,
+        actionableOutput: detectedJdRole,
+        actionType: 'apply_role'
+      });
+    }
+
+    // Optimization 5: Methodologies & Collaboration
+    if (missingSoftSkills.length > 0) {
+      optimizationsRequired.push({
+        id: 'soft-opt',
+        area: 'Methodologies & Soft Skills',
+        severity: 'low',
+        title: 'Demonstrate Collaboration & Delivery Best Practices',
+        currentInsight: `This role emphasizes ${missingSoftSkills.slice(0, 3).join(', ')}.`,
+        recommendation: 'Mention your involvement in code reviews, architectural discussions, and cross-functional handoffs in your project descriptions.'
+      });
+    }
+
+    // Response structure
+    const responsePayload = {
+      matchScore,
+      matchLevel,
+      matchBadgeColor,
+      targetRole: detectedJdRole,
+      companyName,
+      metricsCount: metricMatches,
+      overview: `Resume analysis indicates a ${matchScore}% ATS match for the ${detectedJdRole} role. We identified ${matchedSkills.length} matching technical skills, ${missingSkills.length} missing skill gaps, and ${optimizationsRequired.length} key optimization areas.`,
+      
+      // What needs to be added
+      whatNeedsToBeAdded: {
+        missingHardSkills: topMissingSkills,
+        missingSoftSkills: topMissingSoft,
+        missingKeywords: missingKeywords.slice(0, 8),
+        suggestedBulletPoints
+      },
+
+      // What optimization is required
+      whatOptimizationIsRequired: {
+        tailoredSummary,
+        optimizations: optimizationsRequired
+      },
+
+      // Skill breakdown for badges
+      skillBreakdown: {
+        matched: matchedSkills,
+        missing: missingSkills,
+        matchedSoft: matchedSoftSkills,
+        missingSoft: missingSoftSkills
+      }
+    };
+
+    res.json(responsePayload);
+  } catch (err) {
+    console.error('[JD Matcher] Error analyzing JD against resume:', err);
+    res.status(500).json({ error: 'Failed to analyze Job Description. ' + err.message });
+  }
+});
+
 export default router;
+

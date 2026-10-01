@@ -1,0 +1,60 @@
+services:
+  # ==========================================
+  # Backend API Service (Node.js + Express)
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: interview-tracker-backend
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - NODE_ENV=production
+    volumes:
+      - backend_uploads:/app/uploads
+      - ./backend/db.json:/app/db.json
+    networks:
+      - interview-tracker-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ==========================================
+  # Frontend Client (Nginx + React 19 SPA)
+  # ==========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: interview-tracker-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - interview-tracker-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost/"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+# ==========================================
+# Persistent Volumes & Networks
+# ==========================================
+volumes:
+  backend_uploads:
+    driver: local
+
+networks:
+  interview-tracker-net:
+    driver: bridge
