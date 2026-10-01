@@ -1,8 +1,12 @@
-const API_BASE_URL = 'http://localhost:5001/api';
+export const SERVER_BASE_URL = 'http://localhost:5001';
+export const API_BASE_URL = `${SERVER_BASE_URL}/api`;
 
 export const api = {
-  fetchJobs: async (role = '', location = '', remote = false) => {
-    const query = new URLSearchParams({ role, location, remote: remote ? 'true' : 'false' });
+  fetchJobs: async (role = '', location = '', remote = false, skills = '', experience = '') => {
+    const params = { role, location, remote: remote ? 'true' : 'false' };
+    if (skills) params.skills = skills;
+    if (experience) params.experience = experience;
+    const query = new URLSearchParams(params);
     const res = await fetch(`${API_BASE_URL}/jobs?${query}`);
     return res.json();
   },
@@ -12,6 +16,27 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(jobData)
+    });
+    return res.json();
+  },
+
+  deleteCustomJob: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/jobs/${id}`, {
+      method: 'DELETE'
+    });
+    return res.json();
+  },
+
+  getApplications: async () => {
+    const res = await fetch(`${API_BASE_URL}/applications`);
+    return res.json();
+  },
+
+  saveApplications: async (applicationsData) => {
+    const res = await fetch(`${API_BASE_URL}/applications`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(applicationsData)
     });
     return res.json();
   },
@@ -272,7 +297,7 @@ function evaluateSTARAnswerLocally(starAnswer) {
     strengths.push("Strong active voice. Words like 'optimized' or 'implemented' paint you as a proactive leader.");
   }
 
-  let summary = "";
+  let summary;
   if (overallScore >= 85) {
     summary = "Outstanding STAR response! This answer is highly structured, quantitative, and ready for senior-level tech interviews. Maintain this exact format.";
   } else if (overallScore >= 65) {

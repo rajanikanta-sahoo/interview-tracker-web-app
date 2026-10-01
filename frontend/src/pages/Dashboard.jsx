@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Briefcase, BookOpen, FileText, Search, User, CheckSquare,
@@ -8,11 +8,37 @@ import {
 import { storage } from '../services/storage';
 import { api } from '../services/api';
 
+// Relative time helper (module-scope for purity)
+const timeAgo = (dateStr) => {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+};
+
 function Dashboard() {
   const navigate = useNavigate();
   const [profile, setProfile] = useState({ name: '', role: '', skills: [], experience: '' });
-  const [trackerStats, setTrackerStats] = useState({ applied: 0, interviewing: 0, offer: 0, rejected: 0 });
-  const [recentJobs, setRecentJobs] = useState([]);
+  const [trackerStats, setTrackerStats] = useState(() => {
+    const data = storage.getTrackerJobs();
+    return {
+      applied: data.applied?.length || 0,
+      interviewing: data.interviewing?.length || 0,
+      offer: data.offer?.length || 0,
+      rejected: data.rejected?.length || 0
+    };
+  });
+  const [recentJobs, setRecentJobs] = useState(() => {
+    const data = storage.getTrackerJobs();
+    return Object.values(data).flat()
+      .filter(j => j.trackedAt || j.appliedDate)
+      .sort((a, b) => new Date(b.trackedAt || b.appliedDate) - new Date(a.trackedAt || a.appliedDate))
+      .slice(0, 5);
+  });
   const [resumeCount, setResumeCount] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
 
@@ -25,45 +51,61 @@ function Dashboard() {
     toastRef.current = setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
   };
 
-  useEffect(() => {
-    loadDashboardData();
-    return () => { if (toastRef.current) clearTimeout(toastRef.current); };
-  }, []);
-
   const loadDashboardData = async () => {
     try {
-      // Tracker stats from localStorage
+      const [prof, resumes, questions] = await Promise.all([
+        api.fetchProfile().catch(() => ({})),
+        api.getResumes().catch(() => []),
+        api.fetchQuestions().catch(() => [])
+      ]);
+      setProfile(prof || {});
+      setResumeCount(resumes?.length || 0);
+      setQuestionCount(questions?.length || 0);
+
+      // Refresh Tracker stats from localStorage
       const data = storage.getTrackerJobs();
-      const stats = {
+      setTrackerStats({
         applied: data.applied?.length || 0,
         interviewing: data.interviewing?.length || 0,
         offer: data.offer?.length || 0,
         rejected: data.rejected?.length || 0
-      };
-      setTrackerStats(stats);
-
-      // Recent tracked jobs (last 5)
-      const allJobs = Object.values(data).flat()
-        .filter(j => j.trackedAt || j.appliedDate)
-        .sort((a, b) => new Date(b.trackedAt || b.appliedDate) - new Date(a.trackedAt || a.appliedDate))
-        .slice(0, 5);
-      setRecentJobs(allJobs);
-
-      // Profile
-      const prof = await api.fetchProfile();
-      setProfile(prof);
-
-      // Resume count
-      const resumes = await api.getResumes();
-      setResumeCount(resumes.length);
-
-      // Question count
-      const questions = await api.fetchQuestions();
-      setQuestionCount(questions.length);
+      });
+      setRecentJobs(
+        Object.values(data).flat()
+          .filter(j => j.trackedAt || j.appliedDate)
+          .sort((a, b) => new Date(b.trackedAt || b.appliedDate) - new Date(a.trackedAt || a.appliedDate))
+          .slice(0, 5)
+      );
     } catch (e) {
       console.error('Dashboard load error:', e);
     }
   };
+
+  useEffect(() => {
+    let ignore = false;
+    async function initDashboard() {
+      try {
+        const [prof, resumes, questions] = await Promise.all([
+          api.fetchProfile().catch(() => ({})),
+          api.getResumes().catch(() => []),
+          api.fetchQuestions().catch(() => [])
+        ]);
+        if (!ignore) {
+          setProfile(prof || {});
+          if (prof && Object.keys(prof).length > 0) storage.saveProfile(prof);
+          setResumeCount(resumes?.length || 0);
+          setQuestionCount(questions?.length || 0);
+        }
+      } catch (e) {
+        console.error('Dashboard load error:', e);
+      }
+    }
+    initDashboard();
+    return () => {
+      ignore = true;
+      if (toastRef.current) clearTimeout(toastRef.current);
+    };
+  }, []);
 
   const total = trackerStats.applied + trackerStats.interviewing + trackerStats.offer + trackerStats.rejected;
   const successRate = total > 0 ? Math.round((trackerStats.offer / total) * 100) : 0;
@@ -88,18 +130,6 @@ function Dashboard() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
   const firstName = (profile.name || '').split(' ')[0] || 'there';
-
-  // Relative time
-  const timeAgo = (dateStr) => {
-    if (!dateStr) return '';
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    return `${days}d ago`;
-  };
 
   const statusColor = (status) => {
     const s = (status || '').toLowerCase();

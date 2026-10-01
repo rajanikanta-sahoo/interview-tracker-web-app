@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   UploadCloud, 
   Info, 
@@ -12,16 +12,78 @@ import {
   Download, 
   AlertCircle, 
   Check, 
-  ExternalLink,
   Trash2,
   FileText,
-  User,
   Phone,
   Mail,
   Linkedin,
   RefreshCw
 } from 'lucide-react';
 import { api } from '../services/api';
+
+const normalizeSkillString = (s) => {
+  if (!s) return '';
+  if (typeof s === 'string') return s.trim();
+  if (typeof s === 'object' && s.name) return String(s.name).trim();
+  return String(s).trim();
+};
+
+const normalizeSkillsArray = (skills) => {
+  if (!Array.isArray(skills)) return [];
+  return skills.map(normalizeSkillString).filter(Boolean);
+};
+
+// --- SUB-COMPONENT: ATS GAUGE (Declared at module scope for React 19 / Compiler purity) ---
+function ATSGauge({ score }) {
+  const radius = 24;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (score / 100) * circumference;
+  
+  let color = '#ef4444'; // Red
+  if (score >= 75) color = '#10b981'; // Emerald Green
+  else if (score >= 50) color = '#f59e0b'; // Amber
+
+  return (
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '0.75rem', 
+      backgroundColor: '#ffffff', 
+      padding: '0.5rem 1rem', 
+      borderRadius: '12px', 
+      border: '1px solid #e2e8f0', 
+      boxShadow: 'var(--shadow-sm)',
+      margin: '0.5rem 0 1rem 0'
+    }}>
+      <svg width="60" height="60" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx="30" cy="30" r={radius} fill="transparent" stroke="#f1f5f9" strokeWidth="5" />
+        <circle 
+          cx="30" 
+          cy="30" 
+          r={radius} 
+          fill="transparent" 
+          stroke={color} 
+          strokeWidth="5" 
+          strokeDasharray={circumference} 
+          strokeDashoffset={strokeDashoffset} 
+          strokeLinecap="round"
+          style={{ 
+            transition: 'stroke-dashoffset 0.8s ease-out, stroke 0.3s ease',
+          }}
+        />
+      </svg>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <span style={{ fontSize: '10px', textTransform: 'uppercase', color: '#64748b', fontWeight: 'bold', letterSpacing: '0.05em' }}>AI Optimisation Score</span>
+        <span style={{ fontSize: '20px', fontWeight: '800', color: color, display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {score}%
+          {score >= 75 && <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#10b981' }}>(Strong Match)</span>}
+          {score < 75 && score >= 50 && <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#f59e0b' }}>(Good Match)</span>}
+          {score < 50 && <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#ef4444' }}>(Gaps Detected)</span>}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function ResumeBuilder() {
   const [activeTab, setActiveTab] = useState('resumes'); // 'resumes' or 'coverLetters'
@@ -54,27 +116,6 @@ function ResumeBuilder() {
   // Toast Timer Ref
   const toastTimeoutRef = useRef(null);
 
-  useEffect(() => {
-    loadInitialData();
-    return () => {
-      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    };
-  }, []);
-
-  const loadInitialData = async () => {
-    try {
-      const prof = await api.fetchProfile();
-      setProfile(prof);
-      const loadedResumes = await api.getResumes();
-      setResumes(loadedResumes);
-      const loadedCLs = await api.getCoverLetters();
-      setCoverLetters(loadedCLs);
-    } catch (err) {
-      console.error("Error loading initial data:", err);
-      showToast("Failed to load initial data.", "error");
-    }
-  };
-
   // Toast Helper
   const showToast = (message, type = 'success') => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
@@ -83,6 +124,31 @@ function ResumeBuilder() {
       setToast({ show: false, message: '', type: 'success' });
     }, 4000);
   };
+
+  useEffect(() => {
+    let ignore = false;
+    async function init() {
+      try {
+        const [prof, loadedResumes, loadedCLs] = await Promise.all([
+          api.fetchProfile().catch(() => ({})),
+          api.getResumes().catch(() => []),
+          api.getCoverLetters().catch(() => [])
+        ]);
+        if (!ignore) {
+          setProfile(prof || {});
+          setResumes(loadedResumes || []);
+          setCoverLetters(loadedCLs || []);
+        }
+      } catch (err) {
+        console.error("Error loading initial data:", err);
+      }
+    }
+    init();
+    return () => {
+      ignore = true;
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
 
   // --- RESUME UPLOAD LOGIC ---
 
@@ -107,7 +173,7 @@ function ResumeBuilder() {
           linkedin: parsedResume.linkedin || '',
           experience: parsedResume.experience || [],
           education: parsedResume.education || [],
-          skills: parsedResume.skills || [],
+          skills: normalizeSkillsArray(parsedResume.skills || []),
           selectedPoints: parsedResume.selectedPoints || []
         };
 
@@ -166,7 +232,7 @@ function ResumeBuilder() {
       summary: '',
       experience: [],
       education: [],
-      skills: [...(profile.skills || [])],
+      skills: normalizeSkillsArray(profile.skills || []),
       selectedPoints: []
     };
     setCurrentResume(newRes);
@@ -243,7 +309,10 @@ function ResumeBuilder() {
     }
     setIsGenerating(true);
     try {
-      const data = await api.generateSuggestions(currentResume.role, currentResume.skills || profile.skills || []);
+      const activeSkills = normalizeSkillsArray(currentResume.skills || []);
+      const fallbackSkills = normalizeSkillsArray(profile.skills || []);
+      const skillsToSend = activeSkills.length > 0 ? activeSkills : fallbackSkills;
+      const data = await api.generateSuggestions(currentResume.role, skillsToSend);
       setSuggestions(data);
       showToast("AI Optimization recommendations loaded!", "success");
     } catch (err) {
@@ -278,7 +347,7 @@ function ResumeBuilder() {
       const trimmed = skillInput.trim();
       if (!trimmed) return;
       
-      const currentSkills = currentResume.skills || [];
+      const currentSkills = normalizeSkillsArray(currentResume.skills || []);
       if (currentSkills.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
         showToast("Skill already exists in this resume.", "info");
         return;
@@ -293,10 +362,11 @@ function ResumeBuilder() {
   };
 
   const handleRemoveSkill = (skillToRemove) => {
-    const currentSkills = currentResume.skills || [];
+    const currentSkills = normalizeSkillsArray(currentResume.skills || []);
+    const target = normalizeSkillString(skillToRemove);
     setCurrentResume({
       ...currentResume,
-      skills: currentSkills.filter(s => s !== skillToRemove)
+      skills: currentSkills.filter(s => s !== target)
     });
   };
 
@@ -456,60 +526,6 @@ function ResumeBuilder() {
   const clContent = currentCoverLetter?.content || '';
   const clWordCount = clContent.trim().split(/\s+/).filter(Boolean).length;
   const clReadTime = Math.max(1, Math.ceil(clWordCount / 200));
-
-  // --- SUB-COMPONENT: ATS GAUGE ---
-  const ATSGauge = ({ score }) => {
-    const radius = 24;
-    const circumference = 2 * Math.PI * radius;
-    const strokeDashoffset = circumference - (score / 100) * circumference;
-    
-    let color = '#ef4444'; // Red
-    if (score >= 75) color = '#10b981'; // Emerald Green
-    else if (score >= 50) color = '#f59e0b'; // Amber
-
-    return (
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '0.75rem', 
-        backgroundColor: '#ffffff', 
-        padding: '0.5rem 1rem', 
-        borderRadius: '12px', 
-        border: '1px solid #e2e8f0', 
-        boxShadow: 'var(--shadow-sm)',
-        margin: '0.5rem 0 1rem 0'
-      }}>
-        <svg width="60" height="60" style={{ transform: 'rotate(-90deg)' }}>
-          {/* Background Circle */}
-          <circle cx="30" cy="30" r={radius} fill="transparent" stroke="#f1f5f9" strokeWidth="5" />
-          {/* Foreground Circle */}
-          <circle 
-            cx="30" 
-            cy="30" 
-            r={radius} 
-            fill="transparent" 
-            stroke={color} 
-            strokeWidth="5" 
-            strokeDasharray={circumference} 
-            strokeDashoffset={strokeDashoffset} 
-            strokeLinecap="round"
-            style={{ 
-              transition: 'stroke-dashoffset 0.8s ease-out, stroke 0.3s ease',
-            }}
-          />
-        </svg>
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <span style={{ fontSize: '10px', textTransform: 'uppercase', color: '#64748b', fontWeight: 'bold', letterSpacing: '0.05em' }}>AI Optimisation Score</span>
-          <span style={{ fontSize: '20px', fontWeight: '800', color: color, display: 'flex', alignItems: 'center', gap: '4px' }}>
-            {score}%
-            {score >= 75 && <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#10b981' }}>(Strong Match)</span>}
-            {score < 75 && score >= 50 && <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#f59e0b' }}>(Good Match)</span>}
-            {score < 50 && <span style={{ fontSize: '12px', fontWeight: 'normal', color: '#ef4444' }}>(Gaps Detected)</span>}
-          </span>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '80vh', position: 'relative' }}>
@@ -751,7 +767,7 @@ function ResumeBuilder() {
                         linkedin: r.linkedin || '',
                         experience: r.experience || [],
                         education: r.education || [],
-                        skills: r.skills || [],
+                        skills: normalizeSkillsArray(r.skills || []),
                         selectedPoints: r.selectedPoints || []
                       });
                       setSuggestions(null);
@@ -904,7 +920,7 @@ function ResumeBuilder() {
                       <p style={{ fontSize: '12px', fontWeight: '700', color: '#475569', marginBottom: '0.5rem' }}>Skill Gap Analysis:</p>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
                         {suggestions.techSkills.map(skill => {
-                          const resumeSkills = currentResume.skills || [];
+                          const resumeSkills = normalizeSkillsArray(currentResume.skills || []);
                           const hasSkill = resumeSkills.some(rs => rs.toLowerCase() === skill.toLowerCase());
                           return (
                             <span 
@@ -1064,7 +1080,7 @@ function ResumeBuilder() {
                     </div>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', minHeight: '30px' }}>
-                      {(currentResume.skills || []).map(skill => (
+                      {normalizeSkillsArray(currentResume.skills || []).map(skill => (
                         <span 
                           key={skill} 
                           style={{
@@ -1122,7 +1138,7 @@ function ResumeBuilder() {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {(currentResume.experience || []).map((exp, index) => (
+                    {(currentResume.experience || []).map((exp) => (
                       <div 
                         key={exp.id} 
                         style={{ 
@@ -1223,7 +1239,7 @@ function ResumeBuilder() {
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {(currentResume.education || []).map((edu, index) => (
+                    {(currentResume.education || []).map((edu) => (
                       <div 
                         key={edu.id} 
                         style={{ 
@@ -1424,7 +1440,7 @@ function ResumeBuilder() {
                           Core Qualifications & Skills
                         </h2>
                         <p style={{ fontSize: '9.5pt', lineHeight: '1.4', margin: 0, color: '#334155' }}>
-                          {(currentResume.skills || []).join(' • ')}
+                          {normalizeSkillsArray(currentResume.skills || []).join(' • ')}
                         </p>
                       </div>
                     )}

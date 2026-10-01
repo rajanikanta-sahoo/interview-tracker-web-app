@@ -27,7 +27,7 @@
     ],
     "preferences": {
       "location": "bhubanewar",
-      "salary": "1500000",
+      "salary": "15000000",
       "type": "Full-Time"
     },
     "resumePath": null,
@@ -41,7 +41,14 @@
       "id": "q1",
       "role": "Software Engineer",
       "text": "Can you explain the difference between REST and GraphQL?",
-      "type": "text"
+      "type": "text",
+      "starAnswer": {
+        "situation": "During our migration to React 19, the dashboard render latency spiked by 350ms.",
+        "task": "I was assigned to profile the bundle, isolate redundant re-renders, and decrease TTI within 2 weeks.",
+        "action": "I implemented memoized selectors, converted heavy tab components into lazy-loaded chunks, and replaced deep prop drilling with optimized context slices.",
+        "result": "We successfully cut TTI by 45%, eliminated 80% of unnecessary re-renders, and reduced total bundle size by 1.8MB."
+      },
+      "practiceStatus": "Mastered"
     },
     {
       "id": "q2",
@@ -102,21 +109,57 @@
   ],
   "resumes": [
     {
-      "title": "New Resume",
-      "role": "",
-      "name": "Alex Mercer",
-      "email": "alex@mercer.dev",
-      "phone": "+1 555-0199",
-      "summary": "",
+      "title": "RajanikantaSahooResume (1)",
+      "role": "Full Stack Developer",
+      "name": "RAJANIKANTA SAHOO",
+      "email": "rajanikanta.sahoo1@gmail.com",
+      "phone": "+91-9090675646",
+      "linkedin": "",
+      "summary": "I am a highly skilled Java Developer with over 8 years of",
+      "skills": [
+        "React",
+        "Angular",
+        "JavaScript",
+        "HTML",
+        "CSS",
+        "Java",
+        "Spring",
+        "SQL",
+        "PostgreSQL",
+        "MongoDB",
+        "Azure",
+        "Git"
+      ],
       "experience": [],
-      "education": [],
-      "skills": [],
-      "selectedPoints": [],
-      "id": "res-1779117970089",
-      "createdAt": "2026-05-18T15:26:10.089Z",
-      "updatedAt": "2026-05-19T15:47:54.100Z",
-      "linkedin": ""
+      "education": [
+        {
+          "id": "edu-1790486488481-abvi",
+          "institution": "Biju Patnaik University of Technology\t08/ - 05/",
+          "degree": "",
+          "year": "2015"
+        },
+        {
+          "id": "edu-1790486488481-pe58",
+          "institution": "ster In Computer Application",
+          "degree": "Ma",
+          "year": ""
+        }
+      ],
+      "selectedPoints": [
+        "Designed, developed, and deployed web applications utilizing React and Angular.",
+        "Optimized front-end/back-end workflows and improved performance by 25%.",
+        "Collaborated with cross-functional teams in an Agile development environment to meet project milestones."
+      ],
+      "id": "res-1790486488481",
+      "createdAt": "2026-09-27T05:21:28.481Z",
+      "updatedAt": "2026-09-27T05:21:28.481Z"
     }
   ],
-  "coverLetters": []
+  "coverLetters": [],
+  "applications": {
+    "applied": [],
+    "interviewing": [],
+    "offer": [],
+    "rejected": []
+  }
 }

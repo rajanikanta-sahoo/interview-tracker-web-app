@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -81,7 +81,7 @@ function JobPreviewCard({ form }) {
 }
 
 // ── Contribution History Feed ─────────────────────────────────────────────────
-function HistoryFeed({ questions, jobs, onDeleteQuestion }) {
+function HistoryFeed({ questions, jobs, onDeleteQuestion, onDeleteJob }) {
   const all = [
     ...questions.map(q => ({ ...q, _kind: 'question' })),
     ...jobs.map(j => ({ ...j, _kind: 'job' })),
@@ -120,10 +120,14 @@ function HistoryFeed({ questions, jobs, onDeleteQuestion }) {
               {item.type && item.type !== 'text' && <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '8px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>file</span>}
             </div>
           </div>
-          {item._kind === 'question' && (
+          {item._kind === 'question' ? (
             <button onClick={() => onDeleteQuestion(item.id)}
               style={{ background: 'none', border: '1.5px solid #ef4444', borderRadius: '6px', color: '#ef4444', cursor: 'pointer', width: '26px', height: '26px', fontSize: '0.8rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              title="Delete">✕</button>
+              title="Delete Question">✕</button>
+          ) : (
+            <button onClick={() => onDeleteJob(item.id)}
+              style={{ background: 'none', border: '1.5px solid #ef4444', borderRadius: '6px', color: '#ef4444', cursor: 'pointer', width: '26px', height: '26px', fontSize: '0.8rem', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Delete Custom Job">✕</button>
           )}
         </div>
       ))}
@@ -150,7 +154,11 @@ function Contribute() {
   const [toast, setToast]           = useState({ msg: '', type: 'success' });
   const toastTimer                  = useRef(null);
 
-  useEffect(() => { loadHistory(); }, []);
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type });
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast({ msg: '', type: 'success' }), 3000);
+  };
 
   const loadHistory = async () => {
     try {
@@ -160,11 +168,22 @@ function Contribute() {
     } catch (e) { console.error(e); }
   };
 
-  const showToast = (msg, type = 'success') => {
-    setToast({ msg, type });
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast({ msg: '', type: 'success' }), 3000);
-  };
+  useEffect(() => {
+    let ignore = false;
+    async function init() {
+      try {
+        const [qs, js] = await Promise.all([api.fetchQuestions({}), api.fetchJobs('', '', false)]);
+        if (!ignore) {
+          setQuestions(Array.isArray(qs) ? qs : []);
+          setJobs(Array.isArray(js) ? js.filter(j => j.isCustom) : []);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    init();
+    return () => { ignore = true; };
+  }, []);
 
   // ── Job form ──
   const handleJobChange = (e) => {
@@ -228,6 +247,14 @@ function Contribute() {
       showToast('Question deleted.', 'success');
       loadHistory();
     } catch { showToast('Could not delete question.', 'error'); }
+  };
+
+  const deleteJob = async (id) => {
+    try {
+      await api.deleteCustomJob(id);
+      showToast('Custom job deleted.', 'success');
+      loadHistory();
+    } catch { showToast('Could not delete job.', 'error'); }
   };
 
   const TAB_STYLE = (active) => ({
@@ -429,7 +456,7 @@ function Contribute() {
           <h2 style={{ margin: 0, fontSize: '1.1rem' }}>📜 Contribution History</h2>
           <button className="btn btn-outline" style={{ fontSize: '0.78rem', padding: '0.3rem 0.75rem', height: '30px' }} onClick={loadHistory}>↻ Refresh</button>
         </div>
-        <HistoryFeed questions={questions} jobs={jobs} onDeleteQuestion={deleteQuestion} />
+        <HistoryFeed questions={questions} jobs={jobs} onDeleteQuestion={deleteQuestion} onDeleteJob={deleteJob} />
       </div>
     </div>
   );

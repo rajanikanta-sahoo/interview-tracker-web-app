@@ -3,6 +3,10 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import zlib from 'zlib';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse');
+import mammoth from 'mammoth';
 import { readDb, writeDb } from '../db.js';
 
 const router = express.Router();
@@ -99,8 +103,8 @@ const extractTextFromStream = (streamContent) => {
     .replace(/\\\\/g, '\\');
 };
 
-// Helper to extract text from files (zero-dependency)
-const extractText = (filePath, originalName) => {
+// Helper to extract text from files (pdf-parse & mammoth integration)
+const extractText = async (filePath, originalName) => {
   const ext = path.extname(originalName).toLowerCase();
   
   if (ext === '.txt') {
@@ -112,59 +116,21 @@ const extractText = (filePath, originalName) => {
     }
   } else if (ext === '.pdf') {
     try {
-      const buffer = fs.readFileSync(filePath);
-      const allTextParts = [];
-
-      // Step 1: Find and decompress FlateDecode streams
-      // PDF streams are between "stream\r\n" (or "stream\n") and "\r\nendstream" (or "\nendstream")
-      let pos = 0;
-      const bufStr = buffer.toString('binary');
-      
-      // Find all stream...endstream pairs
-      const streamRegex = /stream[\r\n]+/g;
-      let streamMatch;
-      while ((streamMatch = streamRegex.exec(bufStr)) !== null) {
-        const streamStart = streamMatch.index + streamMatch[0].length;
-        const endIdx = bufStr.indexOf('endstream', streamStart);
-        if (endIdx === -1) continue;
-        
-        const streamData = buffer.slice(streamStart, endIdx);
-        
-        // Try to inflate (FlateDecode) the stream
-        let decompressed = null;
-        try {
-          decompressed = zlib.inflateSync(streamData).toString('utf8');
-        } catch (e) {
-          // Not compressed or corrupt — try as raw text
-          decompressed = streamData.toString('binary');
-        }
-        
-        if (decompressed) {
-          const extracted = extractTextFromStream(decompressed);
-          if (extracted.trim() && isReadableText(extracted)) {
-            allTextParts.push(extracted);
-          }
-        }
-      }
-      
-      if (allTextParts.length > 0) {
-        const fullText = allTextParts.join('\n');
-        console.log('[PDF Parser] Extracted text length:', fullText.length, 'chars from', allTextParts.length, 'streams');
-        return fullText;
-      }
-
-      // Step 2: Fallback — try to extract text from uncompressed content directly
-      const rawText = bufStr;
-      const fallbackExtracted = extractTextFromStream(rawText);
-      if (fallbackExtracted.trim() && isReadableText(fallbackExtracted)) {
-        console.log('[PDF Parser] Fallback extraction got', fallbackExtracted.length, 'chars');
-        return fallbackExtracted;
-      }
-      
-      console.log('[PDF Parser] Could not extract readable text from PDF');
-      return '';
+      const dataBuffer = fs.readFileSync(filePath);
+      const data = await pdfParse(dataBuffer);
+      console.log('[PDF Parser] Extracted text length:', data.text ? data.text.length : 0, 'chars');
+      return data.text || '';
     } catch (err) {
       console.error('Error extracting PDF text:', err);
+      return '';
+    }
+  } else if (ext === '.docx') {
+    try {
+      const result = await mammoth.extractRawText({ path: filePath });
+      console.log('[DOCX Parser] Extracted text length:', result.value ? result.value.length : 0, 'chars');
+      return result.value || '';
+    } catch (err) {
+      console.error('Error extracting DOCX text:', err);
       return '';
     }
   }
@@ -480,7 +446,7 @@ const parseResumeText = (text, originalName) => {
 };
 
 // POST /api/resume/upload
-router.post('/upload', upload.single('resume'), (req, res) => {
+router.post('/upload', upload.single('resume'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded or invalid file type' });
   }
@@ -489,7 +455,7 @@ router.post('/upload', upload.single('resume'), (req, res) => {
     const filePath = req.file.path;
     const originalName = req.file.originalname;
 
-    const rawText = extractText(filePath, originalName);
+    const rawText = await extractText(filePath, originalName);
     const parsedData = parseResumeText(rawText, originalName);
 
     const db = readDb();
@@ -640,10 +606,17 @@ router.post('/generate-suggestions', (req, res) => {
 
   const suggestions = MOCK_DATA[category];
 
+  const normalizeSkillName = (s) => {
+    if (!s) return '';
+    if (typeof s === 'string') return s.trim();
+    if (typeof s === 'object' && s.name) return String(s.name).trim();
+    return String(s).trim();
+  };
+
   // Simple ATS matching calculation
   let matchedSkills = 0;
   suggestions.techSkills.forEach(skill => {
-    if (profileSkills.some(ps => ps.toLowerCase() === skill.toLowerCase())) {
+    if (profileSkills.some(ps => normalizeSkillName(ps).toLowerCase() === skill.toLowerCase())) {
       matchedSkills++;
     }
   });

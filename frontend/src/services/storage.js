@@ -19,6 +19,19 @@ export const storage = {
     localStorage.setItem('evaluations', JSON.stringify(evals));
   },
 
+  getProfile: () => {
+    try {
+      const data = localStorage.getItem('user_profile');
+      return data ? JSON.parse(data) : {};
+    } catch {
+      return {};
+    }
+  },
+
+  saveProfile: (profile) => {
+    localStorage.setItem('user_profile', JSON.stringify(profile));
+  },
+
   exportData: () => {
     const data = {
       tracker: storage.getTrackerJobs(),

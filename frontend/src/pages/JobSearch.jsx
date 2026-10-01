@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   Search, X, Check, AlertCircle, ExternalLink, ChevronDown, ChevronUp,
-  MapPin, Clock, Briefcase, Info, RefreshCw, Sparkles, Plus, Filter
+  MapPin, Clock, RefreshCw, Sparkles, Plus, Filter
 } from 'lucide-react';
 import { api } from '../services/api';
 import { storage } from '../services/storage';
@@ -21,11 +21,35 @@ const timeAgo = (dateStr) => {
   return `${Math.floor(days / 30)}mo ago`;
 };
 
+// Skeleton card (module scope to avoid component recreation during render)
+function SkeletonCard() {
+  return (
+    <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <div style={{ height: '18px', width: '60%', backgroundColor: '#e2e8f0', borderRadius: '4px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+        <div style={{ height: '22px', width: '70px', backgroundColor: '#e2e8f0', borderRadius: '9999px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      </div>
+      <div style={{ height: '14px', width: '40%', backgroundColor: '#e2e8f0', borderRadius: '4px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      <div style={{ height: '12px', width: '30%', backgroundColor: '#f1f5f9', borderRadius: '4px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      <div style={{ height: '36px', width: '100%', backgroundColor: '#f1f5f9', borderRadius: '4px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
+        <div style={{ height: '34px', flex: 1, backgroundColor: '#e2e8f0', borderRadius: '6px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+        <div style={{ height: '34px', flex: 1, backgroundColor: '#e2e8f0', borderRadius: '6px', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      </div>
+    </div>
+  );
+}
+
 function JobSearch() {
   const [jobs, setJobs] = useState([]);
   const [searchParams, setSearchParams] = useState({ role: '', location: '', remote: false, skills: '', experience: '' });
   const [loading, setLoading] = useState(false);
-  const [trackedIds, setTrackedIds] = useState(new Set());
+  const [trackedIds, setTrackedIds] = useState(() => {
+    const data = storage.getTrackerJobs();
+    const ids = new Set();
+    Object.values(data).forEach(arr => { if (Array.isArray(arr)) arr.forEach(j => ids.add(j.id)); });
+    return ids;
+  });
   const [expandedJobId, setExpandedJobId] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
 
@@ -38,16 +62,6 @@ function JobSearch() {
     setToast({ show: true, message, type });
     toastRef.current = setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
   };
-
-  useEffect(() => {
-    // Load tracked IDs from localStorage
-    const data = storage.getTrackerJobs();
-    const ids = new Set();
-    Object.values(data).forEach(arr => { if (Array.isArray(arr)) arr.forEach(j => ids.add(j.id)); });
-    setTrackedIds(ids);
-    handleSearch();
-    return () => { if (toastRef.current) clearTimeout(toastRef.current); };
-  }, []);
 
   const handleSearch = async (e) => {
     if (e) e.preventDefault();
@@ -62,6 +76,30 @@ function JobSearch() {
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    let ignore = false;
+    async function init() {
+      setLoading(true);
+      setHasSearched(true);
+      try {
+        const data = await api.fetchJobs();
+        if (!ignore) setJobs(data);
+      } catch (err) {
+        if (!ignore) {
+          console.error(err);
+          showToast('Failed to fetch jobs.', 'error');
+        }
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+    init();
+    return () => {
+      ignore = true;
+      if (toastRef.current) clearTimeout(toastRef.current);
+    };
+  }, []);
 
   const loadFromProfile = async () => {
     try {
@@ -113,23 +151,6 @@ function JobSearch() {
     if ((src || '').includes('User')) return { bg: '#faf5ff', color: '#6b21a8', border: '#e9d5ff' };
     return { bg: '#f1f5f9', color: '#475569', border: '#e2e8f0' };
   };
-
-  // Skeleton card
-  const SkeletonCard = () => (
-    <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <div style={{ height: '18px', width: '60%', backgroundColor: '#e2e8f0', borderRadius: '4px', animation: 'pulse 1.5s ease-in-out infinite' }} />
-        <div style={{ height: '22px', width: '70px', backgroundColor: '#e2e8f0', borderRadius: '9999px', animation: 'pulse 1.5s ease-in-out infinite' }} />
-      </div>
-      <div style={{ height: '14px', width: '40%', backgroundColor: '#e2e8f0', borderRadius: '4px', animation: 'pulse 1.5s ease-in-out infinite' }} />
-      <div style={{ height: '12px', width: '30%', backgroundColor: '#f1f5f9', borderRadius: '4px', animation: 'pulse 1.5s ease-in-out infinite' }} />
-      <div style={{ height: '36px', width: '100%', backgroundColor: '#f1f5f9', borderRadius: '4px', animation: 'pulse 1.5s ease-in-out infinite' }} />
-      <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto' }}>
-        <div style={{ height: '34px', flex: 1, backgroundColor: '#e2e8f0', borderRadius: '6px', animation: 'pulse 1.5s ease-in-out infinite' }} />
-        <div style={{ height: '34px', flex: 1, backgroundColor: '#e2e8f0', borderRadius: '6px', animation: 'pulse 1.5s ease-in-out infinite' }} />
-      </div>
-    </div>
-  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>

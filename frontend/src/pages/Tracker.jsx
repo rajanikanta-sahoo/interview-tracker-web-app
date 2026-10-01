@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { storage } from '../services/storage';
+import { api } from '../services/api';
 
 // ── constants ────────────────────────────────────────────────────────────────
 const COLUMNS = [
@@ -143,6 +144,7 @@ function JobCard({ job, statusKey, colColor, onMove, onDelete, onUpdate }) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [notesDraft, setNotesDraft] = useState(job.notes || '');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const days = daysSince(job.appliedDate);
 
   const saveNotes = () => {
@@ -150,21 +152,48 @@ function JobCard({ job, statusKey, colColor, onMove, onDelete, onUpdate }) {
     setNotesOpen(false);
   };
 
+  const handleDragStart = (e) => {
+    e.dataTransfer.setData('application/json', JSON.stringify({ id: job.id, fromStatus: statusKey }));
+    e.dataTransfer.effectAllowed = 'move';
+    setIsDragging(true);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
   return (
-    <div style={{
-      background: 'var(--card-bg)', borderRadius: '10px', padding: '0.9rem',
-      border: '1px solid var(--border-color)',
-      borderLeft: `3.5px solid ${colColor}`,
-      transition: 'box-shadow 0.2s, transform 0.2s',
-    }}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = `0 4px 16px rgba(0,0,0,0.12)`; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}
+    <div
+      draggable={!isDeleting}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      style={{
+        background: 'var(--card-bg)', borderRadius: '10px', padding: '0.9rem',
+        border: isDragging ? `2px dashed ${colColor}` : '1px solid var(--border-color)',
+        borderLeft: `4px solid ${colColor}`,
+        opacity: isDragging ? 0.4 : 1,
+        cursor: isDeleting ? 'default' : 'grab',
+        transition: 'box-shadow 0.2s, transform 0.2s, opacity 0.2s',
+      }}
+      onMouseEnter={e => {
+        if (!isDragging) {
+          e.currentTarget.style.boxShadow = `0 4px 16px rgba(0,0,0,0.12)`;
+          e.currentTarget.style.transform = 'translateY(-1px)';
+        }
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.boxShadow = 'none';
+        e.currentTarget.style.transform = 'translateY(0)';
+      }}
     >
       {/* Title + Company */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.35rem' }}>
         <div style={{ flex: 1 }}>
-          <h4 style={{ margin: 0, fontSize: '0.88rem', fontWeight: '700', lineHeight: '1.3' }}>{job.title}</h4>
-          <p style={{ margin: '0.15rem 0 0', fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '500' }}>{job.company}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', cursor: 'grab' }} title="Drag to reorder/move">⋮⋮</span>
+            <h4 style={{ margin: 0, fontSize: '0.88rem', fontWeight: '700', lineHeight: '1.3' }}>{job.title}</h4>
+          </div>
+          <p style={{ margin: '0.15rem 0 0 1.15rem', fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: '500' }}>{job.company}</p>
         </div>
       </div>
 
@@ -256,7 +285,7 @@ function JobCard({ job, statusKey, colColor, onMove, onDelete, onUpdate }) {
 }
 
 // ── Empty State ───────────────────────────────────────────────────────────────
-function EmptyState({ col }) {
+function EmptyState({ col, isOver }) {
   const msgs = {
     applied:      { icon: '📨', text: 'No applications yet.\nAdd a job or search for one!' },
     interviewing: { icon: '🎯', text: 'No interviews yet.\nMove applied jobs here when you hear back.' },
@@ -265,23 +294,64 @@ function EmptyState({ col }) {
   };
   const { icon, text } = msgs[col] || {};
   return (
-    <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)' }}>
-      <p style={{ fontSize: '2rem', margin: '0 0 0.5rem' }}>{icon}</p>
-      {text.split('\n').map((line, i) => <p key={i} style={{ margin: '0.1rem 0', fontSize: '0.78rem', lineHeight: 1.5 }}>{line}</p>)}
+    <div style={{
+      textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)',
+      borderRadius: '8px',
+      border: isOver ? '2px dashed currentColor' : '2px dashed transparent',
+      transition: 'all 0.2s ease',
+    }}>
+      <p style={{ fontSize: '2rem', margin: '0 0 0.5rem' }}>{isOver ? '📥' : icon}</p>
+      {isOver ? (
+        <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: '600' }}>Drop application here</p>
+      ) : (
+        text.split('\n').map((line, i) => <p key={i} style={{ margin: '0.1rem 0', fontSize: '0.78rem', lineHeight: 1.5 }}>{line}</p>)
+      )}
     </div>
   );
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
 function Tracker() {
-  const [trackerData, setTrackerData] = useState({ applied: [], interviewing: [], offer: [], rejected: [] });
+  const [trackerData, setTrackerData] = useState(() => storage.getTrackerJobs());
   const [showModal, setShowModal]     = useState(false);
   const [search, setSearch]           = useState('');
   const [filterCol, setFilterCol]     = useState('all');
+  const [dragOverCol, setDragOverCol] = useState(null);
 
-  useEffect(() => { setTrackerData(storage.getTrackerJobs()); }, []);
+  // Sync with backend on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function syncBackend() {
+      try {
+        const res = await api.getApplications();
+        if (res && res.success && res.data && isMounted) {
+          const serverData = res.data;
+          const hasServerData = Object.values(serverData).some(arr => Array.isArray(arr) && arr.length > 0);
+          const localData = storage.getTrackerJobs();
+          const hasLocalData = Object.values(localData).some(arr => Array.isArray(arr) && arr.length > 0);
 
-  const save = (data) => { setTrackerData(data); storage.saveTrackerJobs(data); };
+          if (hasServerData) {
+            setTrackerData(serverData);
+            storage.saveTrackerJobs(serverData);
+          } else if (hasLocalData) {
+            await api.saveApplications(localData);
+          }
+        }
+      } catch (err) {
+        console.warn('Backend sync failed, continuing offline:', err);
+      }
+    }
+    syncBackend();
+    return () => { isMounted = false; };
+  }, []);
+
+  const save = (data) => {
+    setTrackerData(data);
+    storage.saveTrackerJobs(data);
+    api.saveApplications(data).catch(err => {
+      console.warn('Could not sync applications to backend:', err);
+    });
+  };
 
   const addJob = (job) => {
     const data = { ...trackerData };
@@ -292,8 +362,8 @@ function Tracker() {
   const moveJob = (job, from, to) => {
     if (from === to) return;
     const data = { ...trackerData };
-    data[from] = data[from].filter(j => j.id !== job.id);
-    data[to]   = [...data[to], { ...job, status: to }];
+    data[from] = (data[from] || []).filter(j => j.id !== job.id);
+    data[to]   = [...(data[to] || []), { ...job, status: to }];
     save(data);
   };
 
@@ -326,7 +396,7 @@ function Tracker() {
   return (
     <div>
       <style>{`
-        .tracker-col { flex: 1; min-width: 240px; border-radius: 12px; padding: 1rem; min-height: 420px; }
+        .tracker-col { flex: 1; min-width: 240px; border-radius: 12px; padding: 1rem; min-height: 420px; transition: all 0.2s ease; }
         .col-header  { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.9rem; padding-bottom:0.6rem; border-bottom: 2px solid; }
       `}</style>
 
@@ -377,8 +447,41 @@ function Tracker() {
           const colJobs = filtered[col.key] || [];
           const show = filterCol === 'all' || filterCol === col.key;
           if (!show) return null;
+          const isOver = dragOverCol === col.key;
           return (
-            <div key={col.key} className="tracker-col" style={{ background: col.bg }}>
+            <div
+              key={col.key}
+              className="tracker-col"
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                if (dragOverCol !== col.key) setDragOverCol(col.key);
+              }}
+              onDragLeave={(e) => {
+                if (e.currentTarget.contains(e.relatedTarget)) return;
+                setDragOverCol(null);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOverCol(null);
+                const raw = e.dataTransfer.getData('application/json');
+                if (!raw) return;
+                try {
+                  const payload = JSON.parse(raw);
+                  if (payload?.id && payload?.fromStatus) {
+                    const job = (trackerData[payload.fromStatus] || []).find(j => j.id === payload.id);
+                    if (job) moveJob(job, payload.fromStatus, col.key);
+                  }
+                } catch (err) {
+                  console.error('Drag drop parse error:', err);
+                }
+              }}
+              style={{
+                background: isOver ? `${col.color}18` : col.bg,
+                border: isOver ? `2px dashed ${col.color}` : '2px solid transparent',
+                boxShadow: isOver ? `0 0 16px ${col.color}33` : 'none',
+              }}
+            >
               {/* Column header */}
               <div className="col-header" style={{ borderColor: col.color }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -394,7 +497,7 @@ function Tracker() {
               {/* Cards */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                 {colJobs.length === 0
-                  ? <EmptyState col={col.key} />
+                  ? <EmptyState col={col.key} isOver={isOver} />
                   : colJobs.map(job => (
                     <JobCard
                       key={job.id}

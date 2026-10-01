@@ -1,5 +1,44 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { api } from '../services/api';
+import { useState, useEffect, useRef } from 'react';
+import { api, SERVER_BASE_URL } from '../services/api';
+
+// ── In-App Confirmation Modal ────────────────────────────────────────────────
+function ConfirmModal({ isOpen, title, message, confirmText, confirmVariant = 'danger', onConfirm, onCancel }) {
+  if (!isOpen) return null;
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(0, 0, 0, 0.55)', backdropFilter: 'blur(3px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+    }} onClick={onCancel}>
+      <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '1.5rem', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+        <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', color: confirmVariant === 'danger' ? '#ef4444' : 'var(--text-color)' }}>
+          {confirmVariant === 'danger' ? '⚠️ ' : ''}{title}
+        </h3>
+        <p style={{ margin: '0 0 1.25rem', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
+          {message}
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.65rem' }}>
+          <button type="button" className="btn btn-outline" onClick={onCancel} style={{ fontSize: '0.82rem', padding: '0.4rem 0.9rem' }}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={onConfirm}
+            style={{
+              fontSize: '0.82rem',
+              padding: '0.4rem 0.9rem',
+              background: confirmVariant === 'danger' ? '#ef4444' : 'var(--primary)',
+              borderColor: confirmVariant === 'danger' ? '#ef4444' : 'var(--primary)',
+            }}
+          >
+            {confirmText || 'Confirm'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function QuestionPracticeHub({ q, onSaveSuccess }) {
   const [answers, setAnswers] = useState({
@@ -9,8 +48,10 @@ function QuestionPracticeHub({ q, onSaveSuccess }) {
     result: q.starAnswer?.result || ''
   });
   const [status, setStatus] = useState(q.practiceStatus || 'Not Started');
-  
-  useEffect(() => {
+  const [prevQId, setPrevQId] = useState(q.id);
+
+  if (prevQId !== q.id) {
+    setPrevQId(q.id);
     setAnswers({
       situation: q.starAnswer?.situation || '',
       task: q.starAnswer?.task || '',
@@ -18,7 +59,7 @@ function QuestionPracticeHub({ q, onSaveSuccess }) {
       result: q.starAnswer?.result || ''
     });
     setStatus(q.practiceStatus || 'Not Started');
-  }, [q]);
+  }
 
   // Timer State
   const [time, setTime] = useState(0);
@@ -30,6 +71,77 @@ function QuestionPracticeHub({ q, onSaveSuccess }) {
   const [coachingLoading, setCoachingLoading] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Speech Recognition State
+  const [activeSpeechField, setActiveSpeechField] = useState(null);
+  const recognitionRef = useRef(null);
+
+  // Stop recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleSpeech = (e, field) => {
+    e.stopPropagation();
+    if (activeSpeechField === field) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      setActiveSpeechField(null);
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('Voice dictation is supported in modern browsers like Chrome, Edge, and Safari.');
+      return;
+    }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      let baseText = answers[field] || '';
+      if (baseText && !baseText.endsWith(' ')) baseText += ' ';
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          transcript += event.results[i][0].transcript;
+        }
+        setAnswers(prev => ({
+          ...prev,
+          [field]: (baseText + transcript).trimStart()
+        }));
+      };
+
+      recognition.onerror = (event) => {
+        console.warn('Speech recognition notice:', event.error);
+        setActiveSpeechField(null);
+      };
+
+      recognition.onend = () => {
+        setActiveSpeechField(null);
+      };
+
+      recognition.start();
+      recognitionRef.current = recognition;
+      setActiveSpeechField(field);
+    } catch (err) {
+      console.warn('Speech recognition error:', err);
+      setActiveSpeechField(null);
+    }
+  };
 
   useEffect(() => {
     if (timerActive) {
@@ -191,7 +303,29 @@ function QuestionPracticeHub({ q, onSaveSuccess }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <label className="text-sm" style={{ fontWeight: '600', color: 'var(--primary)' }}>S - Situation</label>
-              <span className="text-muted text-sm">{answers.situation.length} chars</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <button
+                  type="button"
+                  onClick={(e) => toggleSpeech(e, 'situation')}
+                  title={activeSpeechField === 'situation' ? 'Stop Listening' : 'Voice Dictate'}
+                  style={{
+                    background: activeSpeechField === 'situation' ? '#ef4444' : 'transparent',
+                    color: activeSpeechField === 'situation' ? '#fff' : 'var(--text-muted)',
+                    border: activeSpeechField === 'situation' ? '1px solid #ef4444' : '1px solid var(--border-color)',
+                    borderRadius: '12px',
+                    padding: '0.12rem 0.45rem',
+                    fontSize: '0.68rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.2rem',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {activeSpeechField === 'situation' ? '🔴 Recording...' : '🎙️ Dictate'}
+                </button>
+                <span className="text-muted text-sm">{answers.situation.length} chars</span>
+              </div>
             </div>
             <textarea
               className="input"
@@ -207,7 +341,29 @@ function QuestionPracticeHub({ q, onSaveSuccess }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <label className="text-sm" style={{ fontWeight: '600', color: 'var(--primary)' }}>T - Task</label>
-              <span className="text-muted text-sm">{answers.task.length} chars</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <button
+                  type="button"
+                  onClick={(e) => toggleSpeech(e, 'task')}
+                  title={activeSpeechField === 'task' ? 'Stop Listening' : 'Voice Dictate'}
+                  style={{
+                    background: activeSpeechField === 'task' ? '#ef4444' : 'transparent',
+                    color: activeSpeechField === 'task' ? '#fff' : 'var(--text-muted)',
+                    border: activeSpeechField === 'task' ? '1px solid #ef4444' : '1px solid var(--border-color)',
+                    borderRadius: '12px',
+                    padding: '0.12rem 0.45rem',
+                    fontSize: '0.68rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.2rem',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {activeSpeechField === 'task' ? '🔴 Recording...' : '🎙️ Dictate'}
+                </button>
+                <span className="text-muted text-sm">{answers.task.length} chars</span>
+              </div>
             </div>
             <textarea
               className="input"
@@ -223,7 +379,29 @@ function QuestionPracticeHub({ q, onSaveSuccess }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <label className="text-sm" style={{ fontWeight: '600', color: 'var(--primary)' }}>A - Action</label>
-              <span className="text-muted text-sm">{answers.action.length} chars</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <button
+                  type="button"
+                  onClick={(e) => toggleSpeech(e, 'action')}
+                  title={activeSpeechField === 'action' ? 'Stop Listening' : 'Voice Dictate'}
+                  style={{
+                    background: activeSpeechField === 'action' ? '#ef4444' : 'transparent',
+                    color: activeSpeechField === 'action' ? '#fff' : 'var(--text-muted)',
+                    border: activeSpeechField === 'action' ? '1px solid #ef4444' : '1px solid var(--border-color)',
+                    borderRadius: '12px',
+                    padding: '0.12rem 0.45rem',
+                    fontSize: '0.68rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.2rem',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {activeSpeechField === 'action' ? '🔴 Recording...' : '🎙️ Dictate'}
+                </button>
+                <span className="text-muted text-sm">{answers.action.length} chars</span>
+              </div>
             </div>
             <textarea
               className="input"
@@ -239,7 +417,29 @@ function QuestionPracticeHub({ q, onSaveSuccess }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <label className="text-sm" style={{ fontWeight: '600', color: 'var(--primary)' }}>R - Result</label>
-              <span className="text-muted text-sm">{answers.result.length} chars</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <button
+                  type="button"
+                  onClick={(e) => toggleSpeech(e, 'result')}
+                  title={activeSpeechField === 'result' ? 'Stop Listening' : 'Voice Dictate'}
+                  style={{
+                    background: activeSpeechField === 'result' ? '#ef4444' : 'transparent',
+                    color: activeSpeechField === 'result' ? '#fff' : 'var(--text-muted)',
+                    border: activeSpeechField === 'result' ? '1px solid #ef4444' : '1px solid var(--border-color)',
+                    borderRadius: '12px',
+                    padding: '0.12rem 0.45rem',
+                    fontSize: '0.68rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.2rem',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {activeSpeechField === 'result' ? '🔴 Recording...' : '🎙️ Dictate'}
+                </button>
+                <span className="text-muted text-sm">{answers.result.length} chars</span>
+              </div>
             </div>
             <textarea
               className="input"
@@ -385,10 +585,6 @@ function Preparation() {
     setCollapsedGroups(prev => ({...prev, [groupName]: !prev[groupName]}));
   };
 
-  useEffect(() => {
-    loadQuestions();
-  }, []);
-
   const loadQuestions = async (params = {}) => {
     let data = await api.fetchQuestions(params);
     
@@ -413,24 +609,78 @@ function Preparation() {
     setQuestions(data);
   };
 
+  useEffect(() => {
+    let ignore = false;
+    async function init() {
+      try {
+        let data = await api.fetchQuestions({});
+        data = data.map(q => {
+          const stored = localStorage.getItem(`practice_question_${q.id}`);
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              return {
+                ...q,
+                starAnswer: parsed.starAnswer || q.starAnswer,
+                practiceStatus: parsed.practiceStatus || q.practiceStatus
+              };
+            } catch (e) {
+              console.error("Error parsing stored question practice", e);
+            }
+          }
+          return q;
+        });
+        if (!ignore) setQuestions(data);
+      } catch (err) {
+        console.error("Error loading questions", err);
+      }
+    }
+    init();
+    return () => { ignore = true; };
+  }, []);
+
+  const [modalConfig, setModalConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    onConfirm: () => {}
+  });
+
+  const closeModal = () => setModalConfig(prev => ({ ...prev, isOpen: false }));
+
   const handleSearch = (e) => {
     e.preventDefault();
     loadQuestions(searchParams);
   };
 
-  const handleDeleteAll = async () => {
-    if (window.confirm("Are you sure you want to delete ALL questions?")) {
-      await api.deleteAllQuestions();
-      loadQuestions(searchParams);
-    }
+  const handleDeleteAll = () => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Delete All Questions',
+      message: 'Are you sure you want to delete ALL questions? This action is permanent and cannot be undone.',
+      confirmText: 'Delete All',
+      onConfirm: async () => {
+        closeModal();
+        await api.deleteAllQuestions();
+        loadQuestions(searchParams);
+      }
+    });
   };
 
-  const handleDelete = async (e, id) => {
+  const handleDelete = (e, id) => {
     e.stopPropagation();
-    if (window.confirm("Are you sure you want to delete this question?")) {
-      await api.deleteQuestion(id);
-      loadQuestions(searchParams);
-    }
+    setModalConfig({
+      isOpen: true,
+      title: 'Delete Question',
+      message: 'Are you sure you want to delete this question? Any saved STAR practice draft will also be deleted.',
+      confirmText: 'Delete',
+      onConfirm: async () => {
+        closeModal();
+        await api.deleteQuestion(id);
+        loadQuestions(searchParams);
+      }
+    });
   };
 
   const groupedQuestions = questions.reduce((acc, q) => {
@@ -519,10 +769,10 @@ function Preparation() {
                           
                           {q.type === 'file' && (
                             <div style={{ marginTop: '1rem', marginBottom: '1.5rem' }}>
-                              <a href={`http://localhost:5001${q.path}`} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ display: 'inline-block', marginBottom: '1rem' }}>Download Document</a>
+                              <a href={`${SERVER_BASE_URL}${q.path}`} target="_blank" rel="noreferrer" className="btn btn-primary" style={{ display: 'inline-block', marginBottom: '1rem' }}>Download Document</a>
                               {q.path.toLowerCase().endsWith('.pdf') ? (
                                 <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
-                                  <iframe src={`http://localhost:5001${q.path}`} width="100%" height="400px" style={{ border: 'none' }} title="Document Preview"></iframe>
+                                  <iframe src={`${SERVER_BASE_URL}${q.path}`} width="100%" height="400px" style={{ border: 'none' }} title="Document Preview"></iframe>
                                 </div>
                               ) : (
                                 <p className="text-muted text-sm">Preview not available for this file type. Please download to view.</p>
@@ -531,7 +781,7 @@ function Preparation() {
                           )}
 
                           {/* STAR Method Practice Playground Hub */}
-                          <QuestionPracticeHub q={q} onSaveSuccess={loadQuestions} />
+                          <QuestionPracticeHub key={q.id} q={q} onSaveSuccess={loadQuestions} />
 
                           <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px dashed var(--border-color)', paddingTop: '1rem' }}>
                             <button className="btn btn-outline" style={{ color: 'var(--danger)', borderColor: 'var(--danger)', padding: '0.25rem 0.75rem', fontSize: '0.75rem' }} onClick={(e) => handleDelete(e, q.id)}>Delete Question</button>
@@ -546,6 +796,16 @@ function Preparation() {
           ))
         )}
       </div>
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={modalConfig.isOpen}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        confirmText={modalConfig.confirmText}
+        confirmVariant="danger"
+        onConfirm={modalConfig.onConfirm}
+        onCancel={closeModal}
+      />
     </div>
   );
 }

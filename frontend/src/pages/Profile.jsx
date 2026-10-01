@@ -1,6 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { api } from '../services/api';
+import { useState, useEffect, useRef } from 'react';
+import { api, SERVER_BASE_URL } from '../services/api';
 import { storage } from '../services/storage';
+
+const DEFAULT_PROFILE = {
+  name: '', role: '', experience: '', bio: '',
+  linkedin: '', github: '', portfolio: '',
+  skills: [],
+  preferences: { location: '', salary: '', type: '', remote: false }
+};
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 const SKILL_LEVELS = ['Beginner', 'Intermediate', 'Expert'];
@@ -93,14 +100,7 @@ function StatCard({ icon, label, value, color }) {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 function Profile() {
-  const defaultProfile = {
-    name: '', role: '', experience: '', bio: '',
-    linkedin: '', github: '', portfolio: '',
-    skills: [],
-    preferences: { location: '', salary: '', type: '', remote: false }
-  };
-
-  const [profile, setProfile] = useState(defaultProfile);
+  const [profile, setProfile] = useState(DEFAULT_PROFILE);
   const [activeTab, setActiveTab] = useState('personal');
   const [skillInput, setSkillInput] = useState('');
   const [skillLevel, setSkillLevel] = useState('Intermediate');
@@ -116,22 +116,25 @@ function Profile() {
       const skills = (data.skills || []).map(s =>
         typeof s === 'string' ? { name: s, level: 'Intermediate' } : s
       );
-      setProfile({ ...defaultProfile, ...data, skills });
+      const merged = { ...DEFAULT_PROFILE, ...data, skills };
+      setProfile(merged);
+      storage.saveProfile(merged);
     });
 
     // Career stats
     const jobs = storage.getTrackerJobs();
     const appCount = Object.values(jobs).flat().length;
-    const qCount = JSON.parse(localStorage.getItem('questionsBank') || '[]').length;
-    // questions count from backend via api
-    api.fetchQuestions({}).then(qs => {
-      setStats({ applications: appCount, questions: qs.length, resumes: 0 });
-    }).catch(() => setStats({ applications: appCount, questions: 0, resumes: 0 }));
 
-    // resumes count from backend
-    api.getResumes().then(rs => {
-      setStats(prev => ({ ...prev, resumes: rs.length }));
-    }).catch(() => {});
+    Promise.all([
+      api.fetchQuestions({}).catch(() => []),
+      api.getResumes().catch(() => [])
+    ]).then(([qs, rs]) => {
+      setStats({
+        applications: appCount,
+        questions: Array.isArray(qs) ? qs.length : 0,
+        resumes: Array.isArray(rs) ? rs.length : 0
+      });
+    });
   }, []);
 
   const pct = computeCompleteness(profile);
@@ -175,9 +178,12 @@ function Profile() {
     setSaveStatus('saving');
     try {
       await api.updateProfile(profile);
+      storage.saveProfile(profile);
       if (resumeFile) {
         const res = await api.uploadResume(resumeFile);
-        setProfile(p => ({ ...p, resumePath: res.resumePath }));
+        const updated = { ...profile, resumePath: res.resumePath };
+        setProfile(updated);
+        storage.saveProfile(updated);
         setResumeFile(null);
       }
       setSaveStatus('success');
@@ -419,7 +425,7 @@ function Profile() {
                   <p style={{ margin: 0, fontWeight: '600', fontSize: '0.9rem', color: '#10b981' }}>Resume on file</p>
                   <p className="text-muted text-sm" style={{ margin: 0 }}>{profile.resumePath.split('/').pop()}</p>
                 </div>
-                <a href={`http://localhost:5001${profile.resumePath}`} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ padding: '0.3rem 0.75rem', fontSize: '0.78rem' }}>View</a>
+                <a href={`${SERVER_BASE_URL}${profile.resumePath}`} target="_blank" rel="noreferrer" className="btn btn-outline" style={{ padding: '0.3rem 0.75rem', fontSize: '0.78rem' }}>View</a>
               </div>
             )}
 
@@ -452,7 +458,7 @@ function Profile() {
               <div>
                 <h4 style={{ margin: '0 0 0.75rem' }}>Document Preview</h4>
                 <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
-                  <iframe src={`http://localhost:5001${profile.resumePath}`} width="100%" height="420px" style={{ border: 'none' }} title="Resume Preview" />
+                  <iframe src={`${SERVER_BASE_URL}${profile.resumePath}`} width="100%" height="420px" style={{ border: 'none' }} title="Resume Preview" />
                 </div>
               </div>
             )}
