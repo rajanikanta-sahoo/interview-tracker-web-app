@@ -8,6 +8,7 @@ import questionRoutes from './routes/questions.js';
 import profileRoutes from './routes/profile.js';
 import resumeRoutes from './routes/resume.js';
 import applicationRoutes from './routes/applications.js';
+import checklistRoutes from './routes/checklists.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,6 +35,7 @@ app.use('/api/questions', questionRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/resume', resumeRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/checklists', checklistRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Interview Tracker API is running' });

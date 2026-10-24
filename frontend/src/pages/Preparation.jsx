@@ -981,7 +981,7 @@ function QuestionPracticeHub({ q, onSaveSuccess }) {
 
 function Preparation() {
   const [searchUrlParams] = useSearchParams();
-  const [searchParams, setSearchParams] = useState({ keyword: '', group: '', difficulty: '' });
+  const [searchParams, setSearchParams] = useState({ keyword: '', group: '', difficulty: '', level: '' });
   const [questions, setQuestions] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [collapsedGroups, setCollapsedGroups] = useState({});
@@ -1149,6 +1149,47 @@ function Preparation() {
 
       {/* Search & Filter Card */}
       <div className="card" style={{ padding: '1.35rem', borderRadius: '16px', boxShadow: 'var(--shadow-xs)' }}>
+        {/* Experience Level Filter Pills */}
+        <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '11.5px', fontWeight: '700', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginRight: '4px' }}>
+            Candidate Level:
+          </span>
+          {[
+            { id: '', label: 'All Levels' },
+            { id: 'fresher', label: 'Fresher (0–1y)', color: '#10b981' },
+            { id: 'junior', label: 'Junior (1–3y)', color: '#3b82f6' },
+            { id: 'mid', label: 'Mid-Level (3–6y)', color: '#8b5cf6' },
+            { id: 'senior', label: 'Senior (6–10y)', color: '#f59e0b' },
+            { id: 'lead', label: 'Lead / Principal (10+y)', color: '#ec4899' }
+          ].map(lvl => {
+            const isSelected = (searchParams.level || '') === lvl.id;
+            return (
+              <button
+                key={lvl.id}
+                type="button"
+                onClick={() => {
+                  const updated = { ...searchParams, level: lvl.id };
+                  setSearchParams(updated);
+                  loadQuestions(updated);
+                }}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '16px',
+                  border: isSelected ? `2px solid ${lvl.color || 'var(--primary)'}` : '1px solid var(--border)',
+                  background: isSelected ? (lvl.color ? `${lvl.color}18` : 'var(--primary)') : 'var(--bg-main)',
+                  color: isSelected ? (lvl.color || '#fff') : 'var(--text-muted)',
+                  fontSize: '11.5px',
+                  fontWeight: isSelected ? '700' : '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {lvl.label}
+              </button>
+            );
+          })}
+        </div>
+
         <form onSubmit={handleSearch} style={{ display: 'grid', gridTemplateColumns: '2fr 1.5fr 1fr auto', gap: '1rem', alignItems: 'end' }}>
           <div>
             <label style={{ fontSize: '11.5px', fontWeight: '700', color: '#475569', marginBottom: '0.35rem', display: 'block' }}>Search Topic / Keyword</label>

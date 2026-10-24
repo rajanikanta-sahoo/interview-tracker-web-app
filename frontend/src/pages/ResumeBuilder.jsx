@@ -24,6 +24,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { api } from '../services/api';
+import { resolveLevelFromYears } from '../utils/experience';
 
 const normalizeSkillString = (s) => {
   if (!s) return '';
@@ -1428,6 +1429,35 @@ Key Responsibilities & Qualifications:
                     </button>
                   </div>
                 </div>
+
+                {/* Experience Level Tailored Resume Strategy Banner */}
+                {(() => {
+                  const resolved = resolveLevelFromYears(profile?.experience || 3);
+                  const tips = {
+                    fresher: 'Prioritize academic and hackathon projects, core language competencies, and clean GitHub repository links. Keep formatting strictly to 1 page.',
+                    junior: 'Lead with production contributions. Start every bullet with an action verb (Developed, Refactored, Accelerated) and quantify metrics (e.g., latency, code coverage).',
+                    mid: 'Highlight feature ownership, system design choices, and initial mentoring. Quantify business impact (revenue generated, server spend reduced).',
+                    senior: 'Emphasize architectural leadership, cross-functional vision, distributed scale (10M+ users), and team mentorship. 2 pages are acceptable.',
+                    lead: 'Format like an executive dossier: multi-team org scale, engineering strategy, build vs. buy ROI analysis, and enterprise platform delivery.'
+                  };
+                  return (
+                    <div style={{
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      background: resolved.bg,
+                      border: `1px solid ${resolved.border}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px'
+                    }}>
+                      <span style={{ fontSize: '1.1rem' }}>💡</span>
+                      <div style={{ fontSize: '0.8rem', lineHeight: '1.4' }}>
+                        <strong style={{ color: resolved.color }}>{resolved.label} Resume Strategy: </strong>
+                        <span style={{ color: 'var(--text-main)' }}>{tips[resolved.id] || tips.mid}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Inline Clear Confirmation Banner */}
                 {clearConfirm && (

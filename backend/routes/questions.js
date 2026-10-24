@@ -30,7 +30,7 @@ const upload = multer({
 
 // GET /api/questions - Get questions
 router.get('/', (req, res) => {
-  const { keyword, group, difficulty } = req.query;
+  const { keyword, group, difficulty, level } = req.query;
   const db = readDb();
   let filtered = db.questionsBank;
 
@@ -51,12 +51,17 @@ router.get('/', (req, res) => {
     filtered = filtered.filter(q => q.difficulty === difficulty);
   }
 
+  if (level && level !== 'all') {
+    const lowerLevel = level.toLowerCase();
+    filtered = filtered.filter(q => !q.level || q.level === 'all' || q.level.toLowerCase() === lowerLevel);
+  }
+
   res.json(filtered);
 });
 
 // POST /api/questions - Add a raw text question
 router.post('/', (req, res) => {
-  const { role, text, group, keyAreas, difficulty } = req.body;
+  const { role, text, group, keyAreas, difficulty, level } = req.body;
   if (!text) return res.status(400).json({ error: 'Text is required' });
 
   const newQuestion = { 
@@ -66,6 +71,7 @@ router.post('/', (req, res) => {
     group: group || '',
     keyAreas: keyAreas || '',
     difficulty: difficulty || '',
+    level: level || 'all',
     type: 'text' 
   };
   const db = readDb();

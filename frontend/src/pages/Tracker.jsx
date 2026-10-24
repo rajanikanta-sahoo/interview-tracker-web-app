@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Plus, Search, DollarSign, ExternalLink, FileText,
-  Trash2, X, Briefcase, Clock, Calendar, BookOpen
+  Trash2, X, Briefcase, Clock, Calendar, BookOpen, ClipboardCheck
 } from 'lucide-react';
 import { storage } from '../services/storage';
 import { api } from '../services/api';
@@ -297,31 +297,54 @@ function JobCard({ job, statusKey, colColor, onMove, onDelete, onUpdate }) {
         </a>
       )}
 
-      {/* Quick Role Prep Link */}
-      {statusKey === 'interviewing' && (
+      {/* Quick Role Prep & Checklist Links */}
+      <div style={{ display: 'flex', gap: '6px', marginBottom: '0.65rem' }}>
         <button
           className="btn btn-outline"
-          onClick={() => navigate(`/prep?role=${encodeURIComponent(job.title)}`)}
+          onClick={() => navigate(`/checklist?appId=${job.id}`)}
           style={{
-            width: '100%',
+            flex: 1,
             gap: '0.35rem',
             fontSize: '11px',
             height: '28px',
             borderRadius: '8px',
-            color: 'var(--warning-text)',
-            borderColor: 'var(--warning-border)',
-            backgroundColor: 'var(--warning-bg)',
-            marginBottom: '0.65rem',
+            color: 'var(--primary)',
+            borderColor: 'var(--border)',
+            backgroundColor: 'rgba(99, 102, 241, 0.08)',
             fontWeight: '600',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center'
           }}
-          title="Practice questions specifically for this role"
+          title="Open or create interview preparation checklist for this company"
         >
-          <BookOpen size={12} /> Practice Questions for Role
+          <ClipboardCheck size={12} /> Prep Checklist
         </button>
-      )}
+
+        {statusKey === 'interviewing' && (
+          <button
+            className="btn btn-outline"
+            onClick={() => navigate(`/prep?role=${encodeURIComponent(job.title)}`)}
+            style={{
+              flex: 1,
+              gap: '0.35rem',
+              fontSize: '11px',
+              height: '28px',
+              borderRadius: '8px',
+              color: 'var(--warning-text)',
+              borderColor: 'var(--warning-border)',
+              backgroundColor: 'var(--warning-bg)',
+              fontWeight: '600',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+            title="Practice questions specifically for this role"
+          >
+            <BookOpen size={12} /> Role Bank
+          </button>
+        )}
+      </div>
 
       {/* Notes toggle */}
       <div style={{ marginBottom: '0.65rem' }}>

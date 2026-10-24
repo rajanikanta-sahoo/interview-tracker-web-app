@@ -9,6 +9,7 @@ import JobSearch from './pages/JobSearch';
 import ResumeBuilder from './pages/ResumeBuilder';
 import Tracker from './pages/Tracker';
 import Contribute from './pages/Contribute';
+import Checklist from './pages/Checklist';
 
 function App() {
   useEffect(() => {
@@ -51,6 +52,7 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/prep" element={<Preparation />} />
+          <Route path="/checklist" element={<Checklist />} />
           <Route path="/jobs" element={<JobSearch />} />
           <Route path="/resume" element={<ResumeBuilder />} />
           <Route path="/tracker" element={<Tracker />} />

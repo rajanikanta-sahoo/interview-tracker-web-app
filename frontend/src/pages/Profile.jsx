@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { api, SERVER_BASE_URL } from '../services/api';
 import { storage } from '../services/storage';
+import ExperienceLevelBadge from '../components/ExperienceLevelBadge';
+import { resolveLevelFromYears, EXPERIENCE_LEVELS } from '../utils/experience';
 
 const DEFAULT_PROFILE = {
   name: '', role: '', experience: '', bio: '',
@@ -318,9 +320,14 @@ function Profile() {
             <h2 style={{ margin: '0 0 0.25rem 0', fontSize: '1.85rem', fontWeight: '800', letterSpacing: '-0.02em', color: '#ffffff' }}>
               {profile.name || 'Set Your Name'}
             </h2>
-            <p style={{ margin: 0, color: '#e0e7ff', fontSize: '0.95rem', fontWeight: '500' }}>
-              {profile.role || 'Add your target job title'}{profile.experience ? ` · ${profile.experience} years experience` : ''}
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0 0 0', flexWrap: 'wrap' }}>
+              <p style={{ margin: 0, color: '#e0e7ff', fontSize: '0.95rem', fontWeight: '500' }}>
+                {profile.role || 'Add your target job title'}{profile.experience ? ` · ${profile.experience} years experience` : ''}
+              </p>
+              {profile.experience && (
+                <ExperienceLevelBadge years={profile.experience} size="sm" />
+              )}
+            </div>
 
             {/* Social quick links */}
             <div style={{ display: 'flex', gap: '0.65rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
@@ -384,9 +391,38 @@ function Profile() {
                 <input className="input" name="role" value={profile.role} onChange={handleChange} placeholder="Java Developer" />
               </div>
               <div>
-                <label className="text-sm">Years of Experience</label>
-                <input className="input" type="number" name="experience" value={profile.experience} onChange={handleChange} placeholder="9" min="0" />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                  <label className="text-sm">Years of Experience</label>
+                  <span style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--primary)' }}>
+                    {profile.experience || 0} Yrs ({resolveLevelFromYears(profile.experience).label})
+                  </span>
+                </div>
+                <input
+                  className="input"
+                  type="number"
+                  name="experience"
+                  value={profile.experience}
+                  onChange={handleChange}
+                  placeholder="e.g. 5"
+                  min="0"
+                  max="40"
+                />
               </div>
+            </div>
+
+            {/* Experience Level & Interview Expectations Card */}
+            <div style={{ marginTop: '0.5rem' }}>
+              <ExperienceLevelBadge
+                years={profile.experience}
+                interactive={true}
+                onSelectLevel={(lvlId) => {
+                  const targetLvl = EXPERIENCE_LEVELS.find(l => l.id === lvlId);
+                  if (targetLvl) {
+                    handleChange({ target: { name: 'experience', value: String(targetLvl.minYears) } });
+                  }
+                }}
+                showExpectations={true}
+              />
             </div>
 
             <div>

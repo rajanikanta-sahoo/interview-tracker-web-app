@@ -48,6 +48,7 @@ export const api = {
     if (params.keyword) query.append('keyword', params.keyword);
     if (params.group) query.append('group', params.group);
     if (params.difficulty) query.append('difficulty', params.difficulty);
+    if (params.level) query.append('level', params.level);
     
     const res = await fetch(`${API_BASE_URL}/questions?${query}`);
     return res.json();
@@ -224,6 +225,62 @@ export const api = {
       const errData = await res.json().catch(() => ({}));
       throw new Error(errData.error || `Analysis failed with status ${res.status}`);
     }
+    return res.json();
+  },
+
+  // Checklist & Experience-Level Endpoints
+  fetchExperienceLevels: async () => {
+    const res = await fetch(`${API_BASE_URL}/checklists/levels`);
+    return res.json();
+  },
+
+  fetchChecklistTemplate: async (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.level) query.append('level', params.level);
+    if (params.years) query.append('years', params.years);
+    const res = await fetch(`${API_BASE_URL}/checklists/template?${query}`);
+    return res.json();
+  },
+
+  fetchChecklists: async () => {
+    const res = await fetch(`${API_BASE_URL}/checklists`);
+    return res.json();
+  },
+
+  fetchChecklist: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/checklists/${id}`);
+    return res.json();
+  },
+
+  createChecklist: async (data) => {
+    const res = await fetch(`${API_BASE_URL}/checklists`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+
+  updateChecklist: async (id, data) => {
+    const res = await fetch(`${API_BASE_URL}/checklists/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return res.json();
+  },
+
+  duplicateChecklist: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/checklists/${id}/duplicate`, {
+      method: 'POST'
+    });
+    return res.json();
+  },
+
+  deleteChecklist: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/checklists/${id}`, {
+      method: 'DELETE'
+    });
     return res.json();
   }
 };

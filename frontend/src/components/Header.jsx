@@ -10,6 +10,7 @@ import { api } from '../services/api';
 const APP_PAGES = [
   { title: 'Dashboard', subtitle: 'Overview, pipeline metrics & quick actions', path: '/', icon: 'compass', category: 'Pages' },
   { title: 'Prep Hub', subtitle: 'Practice STAR interview questions & AI scoring', path: '/prep', icon: 'help', category: 'Pages' },
+  { title: 'Prep Checklist', subtitle: 'Experience-based roadmap & interview readiness', path: '/checklist', icon: 'check', category: 'Pages' },
   { title: 'Job Search', subtitle: 'Explore tech jobs with match percentage', path: '/jobs', icon: 'briefcase', category: 'Pages' },
   { title: 'Career Builder', subtitle: 'ATS resumes, cover letters & JD optimizer', path: '/resume', icon: 'file', category: 'Pages' },
   { title: 'Application Tracker', subtitle: 'Kanban board for job applications', path: '/tracker', icon: 'briefcase', category: 'Pages' },
@@ -17,15 +18,16 @@ const APP_PAGES = [
   { title: 'Profile & Settings', subtitle: 'Update career preferences and skill matrix', path: '/profile', icon: 'compass', category: 'Pages' },
 ];
 
-function getDaysSince(dateStr) {
+function getDaysSince(dateStr, nowTime) {
   if (!dateStr) return 0;
-  const diff = Date.now() - new Date(dateStr).getTime();
+  const diff = (nowTime || 0) - new Date(dateStr).getTime();
   return Math.floor(diff / 86400000);
 }
 
 function Header() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [renderTime] = useState(() => Date.now());
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -122,12 +124,33 @@ function Header() {
       icon: '🎯',
       urgent: true
     });
+
+    // Check specific upcoming interview dates
+    interviewingJobs.forEach(job => {
+      if (job.interviewDate) {
+        const interviewTime = new Date(job.interviewDate).getTime();
+        const diffHours = (interviewTime - renderTime) / (1000 * 60 * 60);
+
+        if (diffHours >= -2 && diffHours <= 48) {
+          const isToday = diffHours <= 24 && diffHours >= -2;
+          rawNotifications.push({
+            id: `interview-soon-${job.id}`,
+            title: isToday ? `🔴 Interview Today: ${job.company}` : `🟡 Interview Tomorrow: ${job.company}`,
+            message: `${job.title} round scheduled${job.interviewTime ? ` at ${job.interviewTime}` : ''}. Review your checklist!`,
+            path: '/checklist',
+            type: 'urgent',
+            icon: '📅',
+            urgent: true
+          });
+        }
+      }
+    });
   }
 
   const appliedJobs = trackerData.applied || [];
   appliedJobs.forEach(job => {
     if (job.appliedDate) {
-      const days = getDaysSince(job.appliedDate);
+      const days = getDaysSince(job.appliedDate, renderTime);
       if (days >= 7) {
         rawNotifications.push({
           id: `stale-${job.id}`,

@@ -22,7 +22,9 @@ const defaultData = {
   ],
   customJobs: [],
   resumes: [],
-  coverLetters: []
+  coverLetters: [],
+  checklists: [],
+  applications: { applied: [], interviewing: [], offer: [], rejected: [] }
 };
 
 export const readDb = () => {
@@ -32,7 +34,10 @@ export const readDb = () => {
   }
   try {
     const data = fs.readFileSync(dbFile, 'utf8');
-    return JSON.parse(data);
+    const parsed = JSON.parse(data);
+    if (!parsed.checklists) parsed.checklists = [];
+    if (!parsed.applications) parsed.applications = { applied: [], interviewing: [], offer: [], rejected: [] };
+    return parsed;
   } catch (err) {
     console.error("Error reading db:", err);
     return defaultData;

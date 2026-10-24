@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, User, Briefcase, FileText, 
-  CheckSquare, Settings, BookOpen, 
+  CheckSquare, Settings, BookOpen, ClipboardCheck,
   ChevronLeft, ChevronRight 
 } from 'lucide-react';
 import { storage } from '../services/storage';
@@ -31,6 +31,7 @@ function Sidebar() {
     { name: 'Dashboard', icon: <LayoutDashboard size={19} />, path: '/' },
     { name: 'User Profile', icon: <User size={19} />, path: '/profile' },
     { name: 'Prep Hub', icon: <BookOpen size={19} />, path: '/prep' },
+    { name: 'Prep Checklist', icon: <ClipboardCheck size={19} />, path: '/checklist' },
     { name: 'Job Search', icon: <Briefcase size={19} />, path: '/jobs' },
     { name: 'Career Builder', icon: <FileText size={19} />, path: '/resume' },
     { name: 'Application Tracker', icon: <CheckSquare size={19} />, path: '/tracker' },

@@ -3,10 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import {
   Briefcase, BookOpen, FileText, Search, User, CheckSquare,
   TrendingUp, Award, Clock, ArrowRight, Upload, Download,
-  Check, AlertCircle, X, Sparkles, Target, BarChart3
+  Check, AlertCircle, X, Sparkles, Target, BarChart3,
+  ClipboardCheck, Calendar
 } from 'lucide-react';
 import { storage } from '../services/storage';
 import { api } from '../services/api';
+import ExperienceLevelBadge from '../components/ExperienceLevelBadge';
+import { resolveLevelFromYears } from '../utils/experience';
+import OnboardingModal from '../components/OnboardingModal';
 
 // Relative time helper (module-scope for purity)
 const timeAgo = (dateStr) => {
@@ -41,6 +45,8 @@ function Dashboard() {
   });
   const [resumeCount, setResumeCount] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
+  const [checklists, setChecklists] = useState([]);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Toast
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
@@ -53,14 +59,16 @@ function Dashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const [prof, resumes, questions] = await Promise.all([
+      const [prof, resumes, questions, list] = await Promise.all([
         api.fetchProfile().catch(() => ({})),
         api.getResumes().catch(() => []),
-        api.fetchQuestions().catch(() => [])
+        api.fetchQuestions().catch(() => []),
+        api.fetchChecklists().catch(() => [])
       ]);
       setProfile(prof || {});
       setResumeCount(resumes?.length || 0);
       setQuestionCount(questions?.length || 0);
+      setChecklists(list || []);
 
       // Refresh Tracker stats from localStorage
       const data = storage.getTrackerJobs();
@@ -85,16 +93,18 @@ function Dashboard() {
     let ignore = false;
     async function initDashboard() {
       try {
-        const [prof, resumes, questions] = await Promise.all([
+        const [prof, resumes, questions, list] = await Promise.all([
           api.fetchProfile().catch(() => ({})),
           api.getResumes().catch(() => []),
-          api.fetchQuestions().catch(() => [])
+          api.fetchQuestions().catch(() => []),
+          api.fetchChecklists().catch(() => [])
         ]);
         if (!ignore) {
           setProfile(prof || {});
           if (prof && Object.keys(prof).length > 0) storage.saveProfile(prof);
           setResumeCount(resumes?.length || 0);
           setQuestionCount(questions?.length || 0);
+          setChecklists(list || []);
         }
       } catch (e) {
         console.error('Dashboard load error:', e);
@@ -139,12 +149,29 @@ function Dashboard() {
     return '#3b82f6';
   };
 
+  // Compute upcoming interviews
+  const allTrackerJobs = Object.values(storage.getTrackerJobs()).flat();
+  const upcomingInterviews = allTrackerJobs
+    .filter(j => j.interviewDate)
+    .map(j => {
+      const target = new Date(j.interviewDate).setHours(0,0,0,0);
+      const today = new Date().setHours(0,0,0,0);
+      const diffDays = Math.round((target - today) / 86400000);
+      return { ...j, diffDays };
+    })
+    .sort((a, b) => new Date(a.interviewDate) - new Date(b.interviewDate));
+
+  // Compute checklist summary
+  const totalTasks = checklists.reduce((acc, c) => acc + (c.progress?.total || 0), 0);
+  const completedTasks = checklists.reduce((acc, c) => acc + (c.progress?.completed || 0), 0);
+  const avgChecklistPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
   // Quick action cards
   const quickActions = [
-    { icon: <Search size={20} />, title: 'Search Jobs', desc: 'Find new opportunities', path: '/jobs', color: '#3b82f6', bg: 'rgba(59,130,246,0.06)' },
-    { icon: <FileText size={20} />, title: 'Career Builder', desc: `${resumeCount} resume${resumeCount !== 1 ? 's' : ''} saved`, path: '/resume', color: '#8b5cf6', bg: 'rgba(139,92,246,0.06)' },
+    { icon: <ClipboardCheck size={20} />, title: 'Prep Checklist', desc: `${checklists.length} roadmap${checklists.length !== 1 ? 's' : ''} (${avgChecklistPct}% avg)`, path: '/checklist', color: '#10b981', bg: 'rgba(16,185,129,0.06)' },
     { icon: <BookOpen size={20} />, title: 'Prep Hub', desc: `${questionCount} question${questionCount !== 1 ? 's' : ''} loaded`, path: '/prep', color: '#f59e0b', bg: 'rgba(245,158,11,0.06)' },
-    { icon: <CheckSquare size={20} />, title: 'Tracker', desc: 'Manage your pipeline', path: '/tracker', color: '#10b981', bg: 'rgba(16,185,129,0.06)' },
+    { icon: <FileText size={20} />, title: 'Career Builder', desc: `${resumeCount} resume${resumeCount !== 1 ? 's' : ''} saved`, path: '/resume', color: '#8b5cf6', bg: 'rgba(139,92,246,0.06)' },
+    { icon: <CheckSquare size={20} />, title: 'Tracker', desc: 'Manage your pipeline', path: '/tracker', color: '#3b82f6', bg: 'rgba(59,130,246,0.06)' },
   ];
 
   return (
@@ -218,16 +245,31 @@ function Dashboard() {
           <h1 style={{ fontSize: '1.9rem', fontWeight: '800', margin: '0 0 0.4rem 0', letterSpacing: '-0.025em', color: '#ffffff' }}>
             {greeting}, {firstName} 👋
           </h1>
-          <p style={{ fontSize: '0.925rem', opacity: 0.88, margin: 0, lineHeight: 1.5, color: '#e0e7ff' }}>
-            {profile.role ? (
-              <span>Targeting <strong style={{ color: '#ffffff' }}>{profile.role}</strong> · {profile.experience || '0'} years experience</span>
-            ) : (
-              'Set up your target role and skills to unlock AI-assisted prep & smart matches.'
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+            <p style={{ fontSize: '0.925rem', opacity: 0.88, margin: 0, lineHeight: 1.5, color: '#e0e7ff' }}>
+              {profile.role ? (
+                <span>Targeting <strong style={{ color: '#ffffff' }}>{profile.role}</strong> · {profile.experience || '0'} years experience</span>
+              ) : (
+                'Set up your target role and skills to unlock tailored prep & smart matches.'
+              )}
+            </p>
+            {profile.experience && (
+              <ExperienceLevelBadge years={profile.experience} size="sm" />
             )}
-          </p>
+          </div>
         </div>
 
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '0.65rem' }}>
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+          <button className="btn" onClick={() => setShowOnboarding(true)}
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.2)', color: 'white',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid rgba(255,255,255,0.3)',
+              fontSize: '12.5px', fontWeight: '700', gap: '0.4rem', padding: '0.55rem 1rem',
+              borderRadius: '10px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+            }}>
+            <Sparkles size={14} style={{ color: '#fbbf24' }} /> Personalize Prep
+          </button>
           <button className="btn" onClick={() => document.getElementById('import-file').click()}
             style={{
               backgroundColor: 'rgba(255,255,255,0.12)', color: 'white',
@@ -355,6 +397,163 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Experience-Aware Interview Readiness & Upcoming Countdowns */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: '1.25rem', animation: 'fadeUp 0.65s ease-out' }}>
+        
+        {/* Upcoming Interviews Widget */}
+        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.15rem' }}>
+            <h2 style={{ fontSize: '1.05rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Calendar size={18} style={{ color: 'var(--primary)' }} /> Upcoming Interviews & Countdowns
+            </h2>
+            <button
+              className="btn btn-outline"
+              onClick={() => navigate('/tracker')}
+              style={{ fontSize: '11px', padding: '0.25rem 0.65rem', borderRadius: '8px' }}
+            >
+              Pipeline Board
+            </button>
+          </div>
+
+          {upcomingInterviews.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
+              {upcomingInterviews.slice(0, 3).map((job) => {
+                const isUrgent = job.diffDays <= 1;
+                return (
+                  <div
+                    key={job.id}
+                    style={{
+                      padding: '12px 14px',
+                      borderRadius: '12px',
+                      border: isUrgent ? '1px solid #fecaca' : '1px solid var(--border)',
+                      background: isUrgent ? 'rgba(239, 68, 68, 0.05)' : 'var(--bg-main)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '12px'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: '800',
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          background: isUrgent ? '#fee2e2' : 'rgba(99, 102, 241, 0.12)',
+                          color: isUrgent ? '#b91c1c' : 'var(--primary)',
+                          border: `1px solid ${isUrgent ? '#fca5a5' : 'rgba(99, 102, 241, 0.25)'}`
+                        }}>
+                          {job.diffDays === 0 ? '🔴 TODAY' : job.diffDays === 1 ? '🟡 TOMORROW' : `🟢 In ${job.diffDays} Days`}
+                        </span>
+                        <strong style={{ fontSize: '0.9rem' }}>{job.company}</strong>
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                        {job.title} {job.interviewType ? `• ${job.interviewType}` : ''} {job.interviewTime ? `@ ${job.interviewTime}` : ''}
+                      </div>
+                    </div>
+
+                    <button
+                      className="btn btn-outline"
+                      onClick={() => navigate(`/checklist?appId=${job.id}`)}
+                      style={{ fontSize: '11.5px', padding: '0.35rem 0.75rem', borderRadius: '8px', gap: '4px', flexShrink: 0 }}
+                    >
+                      <ClipboardCheck size={13} /> Open Checklist
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <Calendar size={28} style={{ opacity: 0.4, marginBottom: '8px' }} />
+              <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: '600' }}>No scheduled interviews right now</p>
+              <p style={{ margin: '4px 0 12px 0', fontSize: '0.75rem' }}>Track interview rounds with dates in Tracker to see real-time countdown alerts.</p>
+              <button className="btn btn-outline" onClick={() => navigate('/tracker')} style={{ fontSize: '11.5px', padding: '0.3rem 0.75rem' }}>
+                Schedule in Tracker
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Preparation Readiness Summary */}
+        <div className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.15rem' }}>
+              <h2 style={{ fontSize: '1.05rem', fontWeight: '700', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ClipboardCheck size={18} style={{ color: '#10b981' }} /> Prep Roadmap Readiness
+              </h2>
+              <button
+                className="btn btn-outline"
+                onClick={() => navigate('/checklist')}
+                style={{ fontSize: '11px', padding: '0.25rem 0.65rem', borderRadius: '8px' }}
+              >
+                View Roadmaps
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ width: '56px', height: '56px', position: 'relative', flexShrink: 0 }}>
+                <svg width="56" height="56" viewBox="0 0 36 36">
+                  <path
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none"
+                    stroke="var(--border)"
+                    strokeWidth="3.5"
+                  />
+                  <path
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none"
+                    stroke="#10b981"
+                    strokeWidth="3.5"
+                    strokeDasharray={`${avgChecklistPct}, 100`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div style={{
+                  position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-main)'
+                }}>
+                  {avgChecklistPct}%
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontSize: '1.1rem', fontWeight: '800' }}>
+                  {completedTasks} / {totalTasks} Tasks Mastered
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Across {checklists.length} tailored interview checklist{checklists.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.8rem' }}>
+              <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'var(--bg-main)', border: '1px solid var(--border)' }}>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>Candidate Level</div>
+                <div style={{ fontWeight: '700', color: 'var(--primary)' }}>
+                  {resolveLevelFromYears(profile.experience || 3).label}
+                </div>
+              </div>
+              <div style={{ padding: '8px 12px', borderRadius: '8px', background: 'var(--bg-main)', border: '1px solid var(--border)' }}>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>Questions Loaded</div>
+                <div style={{ fontWeight: '700', color: '#f59e0b' }}>
+                  {questionCount} Questions
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate('/checklist')}
+            style={{ width: '100%', marginTop: '14px', fontSize: '12px', justifyContent: 'center', gap: '6px' }}
+          >
+            Launch Interview Prep Checklist <ArrowRight size={14} />
+          </button>
+        </div>
+      </div>
 
       {/* Main Grid: Quick Actions + Recent Activity */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 1.25fr', gap: '1.25rem', animation: 'fadeUp 0.65s ease-out' }}>
@@ -536,6 +735,46 @@ function Dashboard() {
           </button>
         </div>
       )}
+
+      {/* Interactive Onboarding & Roadmap Personalization Modal */}
+      <OnboardingModal
+        isOpen={showOnboarding}
+        initialProfile={profile}
+        onClose={() => setShowOnboarding(false)}
+        onComplete={async (data) => {
+          setShowOnboarding(false);
+          try {
+            // 1. Update profile
+            const updatedProfile = {
+              ...profile,
+              name: data.name || profile.name,
+              role: data.role || profile.role,
+              experience: data.experience || profile.experience
+            };
+            setProfile(updatedProfile);
+            storage.saveProfile(updatedProfile);
+            await api.updateProfile(updatedProfile);
+
+            // 2. If requested, generate checklist
+            if (data.autoGenerateChecklist) {
+              const newCl = await api.createChecklist({
+                name: `${data.targetCompany ? data.targetCompany + ' ' : ''}${data.role} Prep Checklist`,
+                experienceLevel: data.levelId,
+                companyName: data.targetCompany,
+                role: data.role
+              });
+              setChecklists(prev => [newCl, ...prev]);
+              showToast("Personalized interview checklist created!", "success");
+              navigate(`/checklist?id=${newCl.id}`);
+            } else {
+              showToast("Profile personalized successfully!", "success");
+            }
+          } catch (e) {
+            console.error("Failed completing onboarding", e);
+            showToast("Failed to save onboarding data", "error");
+          }
+        }}
+      />
     </div>
   );
 }

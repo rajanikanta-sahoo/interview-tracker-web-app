@@ -41,6 +41,7 @@
       "id": "q1",
       "role": "Software Engineer",
       "text": "Can you explain the difference between REST and GraphQL?",
+      "level": "junior",
       "type": "text",
       "starAnswer": {
         "situation": "During our migration to React 19, the dashboard render latency spiked by 350ms.",
@@ -54,6 +55,7 @@
       "id": "q2",
       "role": "Software Engineer",
       "text": "How do you handle state management in React?",
+      "level": "fresher",
       "type": "text"
     },
     {
@@ -62,6 +64,7 @@
       "group": "java",
       "keyAreas": "",
       "difficulty": "",
+      "level": "senior",
       "filename": "question-1779028633703-382352337.pdf",
       "originalName": "Java_Senior_Interview_Questions.pdf",
       "path": "/uploads/question-1779028633703-382352337.pdf",
@@ -74,6 +77,7 @@
       "group": "System Design",
       "keyAreas": "",
       "difficulty": "Hard",
+      "level": "mid",
       "type": "text"
     },
     {
@@ -83,6 +87,7 @@
       "group": "System Design",
       "keyAreas": "",
       "difficulty": "Hard",
+      "level": "mid",
       "type": "text"
     },
     {
@@ -92,6 +97,47 @@
       "group": "System Design",
       "keyAreas": "",
       "difficulty": "Hard",
+      "level": "senior",
+      "type": "text"
+    },
+    {
+      "id": "q-seed-fresher-1",
+      "role": "Software Engineer",
+      "text": "Explain how HashMap works internally in your primary programming language and how collisions are resolved.",
+      "group": "Data Structures",
+      "keyAreas": "HashMaps, Collision Resolution, Time Complexity",
+      "difficulty": "Medium",
+      "level": "fresher",
+      "type": "text"
+    },
+    {
+      "id": "q-seed-junior-1",
+      "role": "Full Stack Engineer",
+      "text": "Walk me through how you design an idempotent payment processing endpoint with exponential backoff retries.",
+      "group": "Backend Engineering",
+      "keyAreas": "Idempotency, HTTP Methods, Distributed Retries",
+      "difficulty": "Medium",
+      "level": "junior",
+      "type": "text"
+    },
+    {
+      "id": "q-seed-senior-1",
+      "role": "Staff / Lead Engineer",
+      "text": "Describe a scenario where you had to balance feature delivery velocity against critical technical debt paydown with executive stakeholders.",
+      "group": "Behavioral & Leadership",
+      "keyAreas": "Stakeholder Management, Technical Vision, Debt Prioritization",
+      "difficulty": "Hard",
+      "level": "senior",
+      "type": "text"
+    },
+    {
+      "id": "q-seed-lead-1",
+      "role": "Principal Engineer",
+      "text": "How would you design an enterprise-wide multi-region active-active database replication architecture with strict RTO/RPO SLAs?",
+      "group": "System Design",
+      "keyAreas": "Disaster Recovery, Consensus, Network Partitioning",
+      "difficulty": "Hard",
+      "level": "lead",
       "type": "text"
     }
   ],
@@ -156,6 +202,452 @@
     }
   ],
   "coverLetters": [],
+  "checklists": [
+    {
+      "id": "cl-1792829525771-aneowj",
+      "name": "Rajanikanta Sahoo's Java Developer Interview Checklist",
+      "experienceLevel": "senior",
+      "applicationId": null,
+      "companyName": "TechFlow Solutions",
+      "role": "Java Developer",
+      "interviewDate": "",
+      "createdAt": "2026-10-24T08:12:05.771Z",
+      "updatedAt": "2026-10-24T08:12:05.771Z",
+      "categories": [
+        {
+          "id": "distributed_systems",
+          "title": "🏗️ Distributed Systems & Architecture",
+          "description": "Senior engineers are evaluated heavily on large-scale architectural wisdom",
+          "items": [
+            {
+              "id": "s-sd-distributed",
+              "text": "Master distributed primitives: Consensus (Raft/Paxos), Event Sourcing, CQRS, Saga Pattern",
+              "priority": "critical",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-sd-real-scale",
+              "text": "Be prepared to design systems supporting 10M+ users with multi-region active-active deployments",
+              "priority": "critical",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-sd-data-modeling",
+              "text": "Demonstrate deep data modeling: partitioning keys, hot spots, write amplification, B-Tree vs LSM-Tree",
+              "priority": "critical",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-sd-observability",
+              "text": "Explain telemetry: distributed tracing (OpenTelemetry), APM, error budgeting, and MTTR reduction",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-sd-security",
+              "text": "Cover security architecture: zero trust, OAuth/mTLS, rate limiting against DDoS, data encryption at rest/transit",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "technical_leadership",
+          "title": "🎯 Technical Vision & Strategy",
+          "description": "Demonstrate how you elevate the entire engineering organization",
+          "items": [
+            {
+              "id": "s-vision-story",
+              "text": "Prepare a case study of defining and driving an architecture overhaul or tech migration",
+              "priority": "critical",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-influence-wo-auth",
+              "text": "Have 2 solid examples of influencing peer teams or senior stakeholders without authority",
+              "priority": "critical",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-balancing-debt",
+              "text": "Discuss your framework for balancing feature velocity versus technical debt paydown",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-engineering-standards",
+              "text": "Explain how you set coding guidelines, architecture review boards, and deployment safety bars",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-hiring-bar",
+              "text": "Discuss your experience conducting technical interviews, calibrating candidates, and training interviewers",
+              "priority": "helpful",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "coding_system",
+          "title": "💻 High-Level Coding & System Components",
+          "description": "Write robust, maintainable components with clean interfaces",
+          "items": [
+            {
+              "id": "s-ood-design",
+              "text": "Practice Object-Oriented/Component Design: LRU Cache, Concurrency-safe queue, Pub-Sub Broker",
+              "priority": "critical",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-perf-profiling",
+              "text": "Be ready to discuss memory leak hunting, garbage collection tuning, and flame graph analysis",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-code-review-standards",
+              "text": "Prepare to evaluate pull requests live with an eye on security, scalability, and testability",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "behavioral_leadership",
+          "title": "🗣️ Leadership Behavioral & Culture",
+          "description": "Demonstrate resilience, empathy, and high-impact stakeholder management",
+          "items": [
+            {
+              "id": "s-difficult-convo",
+              "text": "Prepare a story about delivering critical constructive feedback or resolving team dysfunction",
+              "priority": "critical",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-disagree-commit",
+              "text": "Prepare a strong \"Disagree and Commit\" story where you executed fully on an alternative path",
+              "priority": "critical",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-org-impact",
+              "text": "Highlight a technical contribution that drove measurable business impact across multiple teams",
+              "priority": "important",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-executive-questions",
+              "text": "Prepare 5 executive-level questions on business sustainability, runway, and org scaling hurdles",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "resume_negotiation",
+          "title": "📄 Executive Resume & Total Compensation",
+          "description": "Position yourself as an indispensable technical partner",
+          "items": [
+            {
+              "id": "s-res-leadership-focus",
+              "text": "Structure resume emphasizing systems scale, team multipliers, and company-level revenue impacts",
+              "priority": "critical",
+              "linkTo": "/resume",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-ats-match-senior",
+              "text": "Achieve 80%+ ATS match score targeting Staff/Senior requirements",
+              "priority": "important",
+              "linkTo": "/resume",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-comp-negotiation",
+              "text": "Research equity structures (RSUs vs options, vesting cliffs, refreshers) for negotiation leverage",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-references-prep",
+              "text": "Brief 3 senior/director-level references on the specifics of this opportunity",
+              "priority": "helpful",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            }
+          ]
+        }
+      ],
+      "customItems": [],
+      "progress": {
+        "total": 21,
+        "completed": 0,
+        "percentage": 0
+      }
+    },
+    {
+      "id": "cl-1792829525767-qes804",
+      "name": "Rajanikanta Sahoo's Java Developer Interview Checklist",
+      "experienceLevel": "senior",
+      "applicationId": null,
+      "companyName": "TechFlow Solutions",
+      "role": "Java Developer",
+      "interviewDate": "",
+      "createdAt": "2026-10-24T08:12:05.767Z",
+      "updatedAt": "2026-10-24T08:12:05.767Z",
+      "categories": [
+        {
+          "id": "distributed_systems",
+          "title": "🏗️ Distributed Systems & Architecture",
+          "description": "Senior engineers are evaluated heavily on large-scale architectural wisdom",
+          "items": [
+            {
+              "id": "s-sd-distributed",
+              "text": "Master distributed primitives: Consensus (Raft/Paxos), Event Sourcing, CQRS, Saga Pattern",
+              "priority": "critical",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-sd-real-scale",
+              "text": "Be prepared to design systems supporting 10M+ users with multi-region active-active deployments",
+              "priority": "critical",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-sd-data-modeling",
+              "text": "Demonstrate deep data modeling: partitioning keys, hot spots, write amplification, B-Tree vs LSM-Tree",
+              "priority": "critical",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-sd-observability",
+              "text": "Explain telemetry: distributed tracing (OpenTelemetry), APM, error budgeting, and MTTR reduction",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-sd-security",
+              "text": "Cover security architecture: zero trust, OAuth/mTLS, rate limiting against DDoS, data encryption at rest/transit",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "technical_leadership",
+          "title": "🎯 Technical Vision & Strategy",
+          "description": "Demonstrate how you elevate the entire engineering organization",
+          "items": [
+            {
+              "id": "s-vision-story",
+              "text": "Prepare a case study of defining and driving an architecture overhaul or tech migration",
+              "priority": "critical",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-influence-wo-auth",
+              "text": "Have 2 solid examples of influencing peer teams or senior stakeholders without authority",
+              "priority": "critical",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-balancing-debt",
+              "text": "Discuss your framework for balancing feature velocity versus technical debt paydown",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-engineering-standards",
+              "text": "Explain how you set coding guidelines, architecture review boards, and deployment safety bars",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-hiring-bar",
+              "text": "Discuss your experience conducting technical interviews, calibrating candidates, and training interviewers",
+              "priority": "helpful",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "coding_system",
+          "title": "💻 High-Level Coding & System Components",
+          "description": "Write robust, maintainable components with clean interfaces",
+          "items": [
+            {
+              "id": "s-ood-design",
+              "text": "Practice Object-Oriented/Component Design: LRU Cache, Concurrency-safe queue, Pub-Sub Broker",
+              "priority": "critical",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-perf-profiling",
+              "text": "Be ready to discuss memory leak hunting, garbage collection tuning, and flame graph analysis",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-code-review-standards",
+              "text": "Prepare to evaluate pull requests live with an eye on security, scalability, and testability",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "behavioral_leadership",
+          "title": "🗣️ Leadership Behavioral & Culture",
+          "description": "Demonstrate resilience, empathy, and high-impact stakeholder management",
+          "items": [
+            {
+              "id": "s-difficult-convo",
+              "text": "Prepare a story about delivering critical constructive feedback or resolving team dysfunction",
+              "priority": "critical",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-disagree-commit",
+              "text": "Prepare a strong \"Disagree and Commit\" story where you executed fully on an alternative path",
+              "priority": "critical",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-org-impact",
+              "text": "Highlight a technical contribution that drove measurable business impact across multiple teams",
+              "priority": "important",
+              "linkTo": "/prep",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-executive-questions",
+              "text": "Prepare 5 executive-level questions on business sustainability, runway, and org scaling hurdles",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "resume_negotiation",
+          "title": "📄 Executive Resume & Total Compensation",
+          "description": "Position yourself as an indispensable technical partner",
+          "items": [
+            {
+              "id": "s-res-leadership-focus",
+              "text": "Structure resume emphasizing systems scale, team multipliers, and company-level revenue impacts",
+              "priority": "critical",
+              "linkTo": "/resume",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-ats-match-senior",
+              "text": "Achieve 80%+ ATS match score targeting Staff/Senior requirements",
+              "priority": "important",
+              "linkTo": "/resume",
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-comp-negotiation",
+              "text": "Research equity structures (RSUs vs options, vesting cliffs, refreshers) for negotiation leverage",
+              "priority": "important",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            },
+            {
+              "id": "s-references-prep",
+              "text": "Brief 3 senior/director-level references on the specifics of this opportunity",
+              "priority": "helpful",
+              "linkTo": null,
+              "checked": false,
+              "notes": ""
+            }
+          ]
+        }
+      ],
+      "customItems": [],
+      "progress": {
+        "total": 21,
+        "completed": 0,
+        "percentage": 0
+      }
+    }
+  ],
   "applications": {
     "applied": [],
     "interviewing": [

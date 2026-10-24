@@ -447,4 +447,19 @@ h4 { font-size: 1rem; line-height: 1.4; }
     box-shadow: none !important;
     border: none !important;
   }
+  .checklist-page .sidebar-panel {
+    display: none !important;
+  }
+  .checklist-page .action-buttons {
+    display: none !important;
+  }
+  .checklist-page .category {
+    break-inside: avoid;
+    border: 1px solid #cbd5e1 !important;
+    margin-bottom: 12px !important;
+  }
+  .checklist-item.checked {
+    text-decoration: line-through;
+    opacity: 0.6;
+  }
 }
