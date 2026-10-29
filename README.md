@@ -45,9 +45,17 @@ Built with **React 19**, **Vite**, **Express**, **Nginx**, and **Node.js**.
     - **Mid-Level (3–6 yrs)**: System design building blocks, trade-off analysis (SQL vs NoSQL, CAP), feature ownership, junior mentorship.
     - **Senior (6–10 yrs)**: Distributed systems, resilience, technical vision, organizational impact, leadership behavioral scenarios.
     - **Lead / Principal (10+ yrs)**: Enterprise platform architecture, tech roadmaps, build vs buy ROI, talent culture, C-level executive influence.
-  - **Multi-Roadmap Management**: Create, duplicate, and delete distinct preparation roadmaps linked to specific companies (Google, Meta, Stripe) or target roles.
-  - **Dynamic Tracking & Visual Gauges**: Category-by-category progress bars, overall SVG completion ring, priority tags (🔴 *Critical*, 🟡 *Important*, 🟢 *Helpful*), custom task insertion, and expandable prep notes.
+  - **Live Interview Countdown & Daily Pacing**: Set target interview dates to unlock dynamic urgency banners (`🔴 TODAY`, `🟡 TOMORROW`, `🟢 In X Days`) with daily recommended completion pacing (`~3 items/day`).
+  - **Priority Readiness Breakdown & Status Tier**: Discrete tracking of 🔴 Critical milestones, 🟡 Important tasks, and 🟢 Helpful polish, along with dynamic readiness tiers (`🚀 Peak Mastery`, `⭐ Interview Ready`, `📈 Building Momentum`, `🌱 Early Prep Stage`).
+  - **Multi-Roadmap Management & Edit Details**: Create, edit (title, company, role, date, tier), duplicate, and delete roadmaps linked to specific companies or target roles.
+  - **Smart Tracker Auto-Prompt (`?appId=...`)**: 1-click tailored checklist creation when navigating from Kanban jobs that don't yet have a roadmap.
+  - **Category Bulk Actions & Reset**: 1-click **Mark All Done** and **Reset** per category, global **Expand All / Collapse All**, and roadmap progress reset.
+  - **Custom Milestone Lifecycle**: Add, inline-edit descriptions/priorities, and delete custom tasks within any category.
+  - **Study Focus Timer (Pomodoro)**: Built-in 25-minute and 45-minute practice timer for timed LeetCode sessions and mock interview drills.
+  - **Obsidian / Notion Markdown Export**: Instant **Copy as Markdown** with `- [x]` / `- [ ]` syntax, priorities, and personal notes, plus `.md` file download.
+  - **Interactive Level Assessment Rubric**: Multi-tab hiring committee evaluation matrix detailing exact standards for each seniority tier.
   - **Print & PDF Engine**: Dedicated print stylesheet formatting checklists into clean, zero-chrome A4/Letter sheets.
+  - **Instant Global Tooltips**: Viewport-safe, zero-lag floating tooltips on every interactive button in the app.
 - 📊 **Interactive Analytics Dashboard (`/`)**:
   - **Upcoming Interviews & Countdowns Widget**: Real-time urgency alerts (`🔴 TODAY`, `🟡 TOMORROW`, `🟢 In X Days`) with 1-click checklist access.
   - **Roadmap Readiness Summary**: Circular SVG gauge tracking mastered milestones across active roadmaps.
@@ -87,35 +95,42 @@ High-level visibility into your entire job hunt: upcoming interviews with live c
 
 ---
 
-### 2. Kanban Application Tracker
+### 2. Experience-Level Prep Checklist Hub
+Curate and conquer milestone-based interview preparation customized to your seniority tier (Fresher, Mid-Level, Senior, Lead). Features phase-based task breakdown, Critical / Important / Helpful priority meters, integrated focus timer, custom task CRUD, level rubric evaluation modal, bulk mark-all actions, and formatted Markdown export.
+
+![Interview Preparation Checklist](docs/screenshots/checklist.png)
+
+---
+
+### 3. Kanban Application Tracker
 Track application lifecycles from first outreach to signed offer. Add interview dates, times, and round types with real-time countdown alerts, and jump directly into company-tailored interview checklists and role-specific practice.
 
 ![Application Tracker](docs/screenshots/tracker.png)
 
 ---
 
-### 3. Preparation Hub & Mock Interview Simulator
+### 4. Preparation Hub & Mock Interview Simulator
 Browse categorized interview questions filtered by candidate seniority (*Fresher* to *Lead*), system design, and behavioral categories. Practice STAR answers under a 2-minute timer with voice-to-text dictation and audio prompts.
 
 ![Preparation Hub](docs/screenshots/prep_hub.png)
 
 ---
 
-### 4. Job Discovery & 1-Click ATS Fit
+### 5. Job Discovery & 1-Click ATS Fit
 Discover active openings filtered by role, tech stack, and remote flexibility. Click **Match Fit** on any job card to instantly analyze how well your credentials align with the role's requirements.
 
 ![Job Discovery](docs/screenshots/job_search.png)
 
 ---
 
-### 5. Resume Builder & ATS Scorer
+### 6. Resume Builder & ATS Scorer
 Format ATS-friendly resumes with live previewing, seniority-calibrated strategy banners, automated bullet point guidance, and keyword gap analysis against target job descriptions.
 
 ![Resume Builder](docs/screenshots/resume_builder.png)
 
 ---
 
-### 6. Candidate Profile & Resume Auto-Fill
+### 7. Candidate Profile & Resume Auto-Fill
 Manage your career narrative, social links, and skills matrix. Configure your experience years to auto-calibrate expectations and checklists across the application.
 
 ![Candidate Profile](docs/screenshots/profile.png)
@@ -354,6 +369,7 @@ interview-tracker-web-app/
 ├── .dockerignore             # Root docker ignore file
 ├── docs/
 │   └── screenshots/          # Application screenshots for documentation
+│       ├── checklist.png
 │       ├── dashboard.png
 │       ├── job_search.png
 │       ├── prep_hub.png
@@ -384,7 +400,7 @@ interview-tracker-web-app/
 │   ├── .dockerignore         # Frontend ignore manifest
 │   ├── public/
 │   ├── src/
-│   │   ├── components/       # Header, Sidebar, ExperienceLevelBadge, OnboardingModal
+│   │   ├── components/       # Header, Sidebar, ExperienceLevelBadge, GlobalTooltip, OnboardingModal
 │   │   ├── pages/            # Dashboard, Checklist, Tracker, Preparation, Jobs, Resume, Profile, Contribute
 │   │   ├── services/         # Dynamic API integration client (api.js), storage (storage.js)
 │   │   ├── utils/            # Seniority constants & level resolver (experience.js)

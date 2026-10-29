@@ -33,6 +33,8 @@ export default function ExperienceLevelBadge({
                 key={lvl.id}
                 type="button"
                 onClick={() => onSelectLevel && onSelectLevel(lvl.id)}
+                title={`Select ${lvl.label} tier (${lvl.desc} experience) to calibrate interview expectations`}
+                aria-label={`Select ${lvl.label} tier`}
                 style={{
                   padding: '6px 12px',
                   borderRadius: '20px',
@@ -72,6 +74,8 @@ export default function ExperienceLevelBadge({
               <button
                 type="button"
                 onClick={() => setExpanded(!expanded)}
+                title={expanded ? "Hide key interview expectations for this seniority tier" : "Show key interview expectations and focus areas for this seniority tier"}
+                aria-label="Toggle expectations details"
                 style={{ background: 'none', border: 'none', color: activeLevel.color, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: '600' }}
               >
                 {expanded ? 'Hide Key Expectations' : 'View Expectations'}

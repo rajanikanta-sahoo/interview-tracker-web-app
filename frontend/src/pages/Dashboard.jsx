@@ -152,10 +152,12 @@ function Dashboard() {
   // Compute upcoming interviews
   const allTrackerJobs = Object.values(storage.getTrackerJobs()).flat();
   const upcomingInterviews = allTrackerJobs
-    .filter(j => j.interviewDate)
+    .filter(j => j.interviewDate && !isNaN(new Date(j.interviewDate).getTime()))
     .map(j => {
-      const target = new Date(j.interviewDate).setHours(0,0,0,0);
-      const today = new Date().setHours(0,0,0,0);
+      const target = new Date(j.interviewDate);
+      target.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       const diffDays = Math.round((target - today) / 86400000);
       return { ...j, diffDays };
     })

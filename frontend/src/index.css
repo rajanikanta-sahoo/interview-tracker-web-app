@@ -423,6 +423,26 @@ h4 { font-size: 1rem; line-height: 1.4; }
   animation: fadeUp 0.35s ease-out forwards;
 }
 
+@keyframes tooltipFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Checklist Workspace Responsive Layout */
+.checklist-workspace {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 24px;
+}
+@media (max-width: 960px) {
+  .checklist-workspace {
+    grid-template-columns: 1fr;
+  }
+  .checklist-page {
+    padding: 16px 14px !important;
+  }
+}
+
 /* Dedicated Print Stylesheet */
 @media print {
   body {

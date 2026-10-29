@@ -10,6 +10,7 @@ import ResumeBuilder from './pages/ResumeBuilder';
 import Tracker from './pages/Tracker';
 import Contribute from './pages/Contribute';
 import Checklist from './pages/Checklist';
+import GlobalTooltip from './components/GlobalTooltip';
 
 function App() {
   useEffect(() => {
@@ -44,6 +45,7 @@ function App() {
   }, []);
   return (
     <div className="app-container">
+      <GlobalTooltip />
       <Sidebar />
       <div className="main-content">
         <Header />
@@ -57,6 +59,7 @@ function App() {
           <Route path="/resume" element={<ResumeBuilder />} />
           <Route path="/tracker" element={<Tracker />} />
           <Route path="/contribute" element={<Contribute />} />
+          <Route path="*" element={<Dashboard />} />
         </Routes>
       </div>
     </div>
